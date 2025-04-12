@@ -8,9 +8,10 @@ export default function Dashboard() {
     const [screenPermission, setScreenPermission] = useState<boolean | null>(null);
     const [isCapturing, setIsCapturing] = useState(false);
     const [showPopup, setShowPopup] = useState(false);
-    const [interval, setInterval] = useState(5); // Default 5 seconds
+    const [captureInterval, setCaptureInterval] = useState<number>(5); // Renamed from interval
     const [webcamImage, setWebcamImage] = useState<string | null>(null);
     const [screenImage, setScreenImage] = useState<string | null>(null);
+    const [captureCount, setCaptureCount] = useState(0); // Add a counter to track captures
 
     const videoRef = useRef<HTMLVideoElement>(null);
     const screenRef = useRef<HTMLVideoElement>(null);
@@ -19,6 +20,7 @@ export default function Dashboard() {
     const captureIntervalRef = useRef<NodeJS.Timeout | null>(null);
     const webcamCanvasRef = useRef<HTMLCanvasElement>(null);
     const screenCanvasRef = useRef<HTMLCanvasElement>(null);
+    const intervalValueRef = useRef<number>(captureInterval); // Store the interval value in a ref
 
     // Request webcam permission
     const requestWebcam = async () => {
@@ -210,6 +212,40 @@ export default function Dashboard() {
         }
     };
 
+    // Update intervalValueRef when interval state changes
+    useEffect(() => {
+        intervalValueRef.current = captureInterval;
+    }, [captureInterval]);
+
+    // Add an effect to properly update interval timing when interval value changes
+    useEffect(() => {
+        // Log the interval value for debugging
+        console.log(`Interval state changed to: ${captureInterval}`);
+        intervalValueRef.current = captureInterval;
+
+        // Only update if we're currently capturing
+        if (isCapturing && captureIntervalRef.current) {
+            console.log(`Interval value changed to ${captureInterval}. Resetting interval...`);
+            clearInterval(captureIntervalRef.current);
+
+            const captureFunction = () => {
+                console.log(
+                    "Interval triggered (from changed interval), interval value:",
+                    intervalValueRef.current
+                );
+                testWebcamCapture();
+                testScreenCapture();
+                setCaptureCount((prev) => prev + 1);
+                setShowPopup(true);
+                setTimeout(() => setShowPopup(false), 2000);
+            };
+
+            const intervalMs = captureInterval * 1000;
+            console.log(`Setting new interval to ${intervalMs}ms`);
+            captureIntervalRef.current = setInterval(captureFunction, intervalMs);
+        }
+    }, [captureInterval, isCapturing]);
+
     // Start capturing and sending images
     const startCapturing = () => {
         if (webcamPermission && screenPermission) {
@@ -233,35 +269,59 @@ export default function Dashboard() {
                 return;
             }
 
+            // Stop any existing interval first
+            if (captureIntervalRef.current) {
+                console.log("Clearing existing interval before starting new one");
+                clearInterval(captureIntervalRef.current);
+                captureIntervalRef.current = null;
+            }
+
             setIsCapturing(true);
+            setCaptureCount(0); // Reset capture count
             console.log(
                 "Starting capture with dimensions - Webcam:",
                 videoRef.current?.videoWidth,
                 videoRef.current?.videoHeight,
                 "Screen:",
                 screenRef.current?.videoWidth,
-                screenRef.current?.videoHeight
+                screenRef.current?.videoHeight,
+                "Interval:",
+                captureInterval,
+                "seconds"
             );
 
             // Test capture once immediately
             testWebcamCapture();
             testScreenCapture();
+            setCaptureCount(1); // Set to 1 for first capture
+            setShowPopup(true);
+            setTimeout(() => setShowPopup(false), 2000);
 
-            captureIntervalRef.current = setInterval(() => {
+            // Create a new interval - use the current interval state value, not the ref
+            const captureIntervalMs = captureInterval * 1000;
+            console.log(`Setting up interval to capture every ${captureIntervalMs}ms`);
+
+            const captureFunction = () => {
+                console.log("Interval triggered, current interval value:", captureInterval);
                 // Here you would send the images to your backend
                 testWebcamCapture();
                 testScreenCapture();
+                setCaptureCount((prev) => prev + 1);
 
                 // Show popup
                 setShowPopup(true);
                 setTimeout(() => setShowPopup(false), 2000);
-            }, interval * 1000);
+            };
+
+            // Store timeoutId rather than relying on ref inside the closure
+            captureIntervalRef.current = setInterval(captureFunction, captureIntervalMs);
         }
     };
 
     // Stop capturing
     const stopCapturing = () => {
         if (captureIntervalRef.current) {
+            console.log("Stopping capture interval");
             clearInterval(captureIntervalRef.current);
             captureIntervalRef.current = null;
         }
@@ -322,6 +382,15 @@ export default function Dashboard() {
             return () => clearTimeout(checkTimer);
         }
     }, [screenPermission]);
+
+    // Handle interval change with proper validation
+    const handleIntervalChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const newValue = e.target.value;
+        // Ensure we always have a valid number
+        const numericValue =
+            newValue === "" ? 5 : Math.max(1, Math.min(60, parseInt(newValue, 10) || 5));
+        setCaptureInterval(numericValue);
+    };
 
     return (
         <main className="min-h-screen bg-gradient-to-br from-purple-600 to-blue-500 p-8">
@@ -505,7 +574,7 @@ export default function Dashboard() {
                 {/* Controls Section */}
                 <div className="bg-white/10 backdrop-blur-md rounded-lg p-6">
                     <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-4 w-full md:w-auto">
                             <label className="text-white font-['VT323'] text-xl">
                                 Capture Interval (seconds):
                             </label>
@@ -513,27 +582,34 @@ export default function Dashboard() {
                                 type="number"
                                 min="1"
                                 max="60"
-                                value={interval}
-                                onChange={(e) => setInterval(Number(e.target.value))}
+                                value={captureInterval}
+                                onChange={handleIntervalChange}
                                 className="w-20 px-2 py-1 rounded bg-white/20 text-white font-['VT323'] text-xl"
                                 disabled={isCapturing}
                             />
                         </div>
-                        <button
-                            onClick={isCapturing ? stopCapturing : startCapturing}
-                            disabled={!webcamPermission || !screenPermission}
-                            className={`px-8 py-4 rounded-lg font-bold transition-all font-['VT323'] text-xl ${
-                                isCapturing
-                                    ? "bg-red-500 text-white hover:bg-red-600"
-                                    : "bg-white text-purple-600 hover:bg-opacity-90"
-                            } ${
-                                !webcamPermission || !screenPermission
-                                    ? "opacity-50 cursor-not-allowed"
-                                    : ""
-                            }`}
-                        >
-                            {isCapturing ? "Stop Capturing" : "Start Capturing"}
-                        </button>
+                        <div className="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
+                            <button
+                                onClick={isCapturing ? stopCapturing : startCapturing}
+                                disabled={!webcamPermission || !screenPermission}
+                                className={`px-8 py-4 rounded-lg font-bold transition-all font-['VT323'] text-xl w-full sm:w-auto ${
+                                    isCapturing
+                                        ? "bg-red-500 text-white hover:bg-red-600"
+                                        : "bg-white text-purple-600 hover:bg-opacity-90"
+                                } ${
+                                    !webcamPermission || !screenPermission
+                                        ? "opacity-50 cursor-not-allowed"
+                                        : ""
+                                }`}
+                            >
+                                {isCapturing ? "Stop Capturing" : "Start Capturing"}
+                            </button>
+                            {isCapturing && (
+                                <div className="text-white font-['VT323'] text-xl bg-black/30 px-3 py-1 rounded text-center sm:text-left w-full sm:w-auto">
+                                    Captures: {captureCount} | Interval: {captureInterval}s
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>

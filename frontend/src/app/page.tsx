@@ -12,12 +12,20 @@ export default function Home() {
                     Let us judge your coding skills through your webcam and screen! Get your
                     developer aura points and become the ultimate coding ninja! 🥷
                 </p>
-                <Link
-                    href="/dashboard"
-                    className="inline-block px-8 py-4 bg-white text-purple-600 rounded-full text-xl font-bold hover:bg-opacity-90 transition-all transform hover:scale-105 font-['VT323']"
-                >
-                    Start Your Journey →
-                </Link>
+                <div className="flex flex-col sm:flex-row gap-4 items-center justify-center">
+                    <Link
+                        href="/dashboard"
+                        className="px-8 py-4 bg-white text-purple-600 rounded-full text-xl font-bold hover:bg-opacity-90 transition-all transform hover:scale-105 font-['VT323']"
+                    >
+                        Start Your Journey →
+                    </Link>
+                    <Link
+                        href="/admin"
+                        className="px-8 py-4 bg-black/30 text-white rounded-full text-xl font-bold hover:bg-black/40 transition-all transform hover:scale-105 font-['VT323']"
+                    >
+                        Admin Dashboard
+                    </Link>
+                </div>
             </div>
         </main>
     );
