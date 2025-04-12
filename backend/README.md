@@ -102,7 +102,7 @@ This endpoint accepts POST requests to analyze a developer's "aura" based on the
     "score_change": 5,
     "reason": "A meme-style reason for the change in score",
     "updated_score": 47,
-    "tips_for_improvement": "Tips to improve developer productivity"
+    "tips": "Tips to improve developer productivity"
 }
 ```
 
