@@ -36,24 +36,48 @@ connected_clients = set()
 @socketio.on('connect')
 def on_connect():
     connected_clients.add(request.sid)
-    logging.info(f"Client connected: {request.sid}")
+    logging.info(f"Client connected: {request.sid}. Total clients: {len(connected_clients)}")
 
 @socketio.on('disconnect')
 def on_disconnect():
     connected_clients.discard(request.sid)
-    logging.info(f"Client disconnected: {request.sid}")
+    logging.info(f"Client disconnected: {request.sid}. Total clients: {len(connected_clients)}")
 
 def broadcast_aura_update(result, webcam_image_b64, screenshot_b64):
     """Emit aura update along with images to all connected WebSocket clients."""
-    socketio.emit('aura_update', {
+    # Ensure tips is always an array
+    tips = result.get('tips', [])
+    if not isinstance(tips, list):
+        if isinstance(tips, str):
+            # Try to parse JSON string
+            try:
+                parsed_tips = json.loads(tips)
+                if isinstance(parsed_tips, list):
+                    tips = parsed_tips
+                else:
+                    tips = [tips]
+            except json.JSONDecodeError:
+                tips = [tips]
+        else:
+            # Convert to string and use as single tip
+            tips = [str(tips)]
+    
+    payload = {
         'analysis': result['analysis'],
         'score_change': result['score_change'],
         'updated_score': result['updated_score'],
         'reason': result['reason'],
-        'tips': result['tips'],
+        'tips': tips,
         'webcam_image': webcam_image_b64,
         'screenshot_image': screenshot_b64
-    })
+    }
+    logging.info(f"Broadcasting aura update to {len(connected_clients)} clients with score_change: {result['score_change']}")
+    
+    # Check if there are any connected clients
+    if not connected_clients:
+        logging.warning("No connected WebSocket clients to broadcast to.")
+    
+    socketio.emit('aura_update', payload)
     logging.info("Aura update broadcasted via WebSocket.")
 
 def validate_base64_image(b64_string):
@@ -79,12 +103,18 @@ def analyze_aura():
             logging.error("Empty request body.")
             return jsonify({'error': 'No JSON data provided in the request.'}), 400
 
+        # print(data)
+
         webcam_image_b64 = data.get('webcam_image')
         screenshot_b64 = data.get('screenshot')
         current_score = data.get('current_score')
 
+        # print(bool(webcam_image_b64))
+        # print(bool(screenshot_b64))
+        # print(current_score)
+
         # Validation
-        if not all([webcam_image_b64, screenshot_b64, current_score]):
+        if not all([webcam_image_b64, screenshot_b64]):
             logging.error("Missing webcam image, screenshot, or current score.")
             return jsonify({'error': 'Missing webcam image, screenshot, or current score.'}), 400
 
@@ -170,6 +200,84 @@ def analyze_aura():
     except Exception as e:
         logging.exception("Error handling the request")
         return jsonify({'error': 'Failed to process the request.', 'details': str(e)}), 500
+
+def validate_and_normalize_message(message_data):
+    """
+    Ensure all fields in the message payload are properly formatted.
+    - tips field should always be an array
+    - score_change should be a number
+    - updated_score should be a number
+    """
+    normalized = {}
+    
+    # Copy all original fields
+    for key, value in message_data.items():
+        normalized[key] = value
+    
+    # Ensure tips is an array
+    if 'tips' in normalized:
+        tips = normalized['tips']
+        if not isinstance(tips, list):
+            if isinstance(tips, str):
+                try:
+                    parsed = json.loads(tips)
+                    if isinstance(parsed, list):
+                        normalized['tips'] = parsed
+                    else:
+                        normalized['tips'] = [tips]
+                except json.JSONDecodeError:
+                    normalized['tips'] = [tips]
+            else:
+                normalized['tips'] = [str(tips)]
+    else:
+        normalized['tips'] = []  # Default empty array
+    
+    # Ensure numeric fields
+    for field in ['score_change', 'updated_score']:
+        if field in normalized and not isinstance(normalized[field], (int, float)):
+            try:
+                normalized[field] = float(normalized[field])
+            except (ValueError, TypeError):
+                normalized[field] = 0
+    
+    return normalized
+
+@app.route('/test_broadcast', methods=['GET'])
+def test_broadcast():
+    """Test endpoint to verify WebSocket broadcasting is working."""
+    try:
+        # Create a test message with simple data
+        test_message = {
+            'analysis': "This is a test broadcast message.",
+            'score_change': 5,
+            'updated_score': 100,
+            'reason': "Test broadcast from server.",
+            'tips': ["Test tip 1", "Test tip 2", "Remember to stay hydrated"],
+            'webcam_image': "test_image_data",
+            'screenshot_image': "test_screenshot_data"
+        }
+        
+        # Normalize the message to ensure proper format
+        normalized_message = validate_and_normalize_message(test_message)
+        
+        logging.info(f"Broadcasting test message to {len(connected_clients)} clients")
+        logging.info(f"Tips data format: {type(normalized_message['tips'])}, length: {len(normalized_message['tips'])}")
+        
+        # Broadcast the test message
+        socketio.emit('aura_update', normalized_message)
+        
+        return jsonify({
+            'success': True,
+            'message': "Test broadcast sent",
+            'connected_clients': len(connected_clients),
+            'normalized_message': normalized_message
+        })
+    except Exception as e:
+        logging.exception("Error sending test broadcast")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
 if __name__ == '__main__':
     socketio.run(app, debug=True)

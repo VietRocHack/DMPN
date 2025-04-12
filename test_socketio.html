@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>SocketIO Test</title>
+        <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                padding: 20px;
+                max-width: 800px;
+                margin: 0 auto;
+            }
+            button {
+                padding: 10px;
+                margin: 10px 0;
+                cursor: pointer;
+            }
+            #log {
+                background: #f1f1f1;
+                padding: 10px;
+                border-radius: 5px;
+                height: 400px;
+                overflow-y: auto;
+            }
+            .message {
+                margin-bottom: 10px;
+                border-bottom: 1px solid #ddd;
+                padding-bottom: 5px;
+            }
+            .error {
+                color: red;
+            }
+            .success {
+                color: green;
+            }
+            pre {
+                white-space: pre-wrap;
+                word-wrap: break-word;
+            }
+        </style>
+    </head>
+    <body>
+        <h1>Socket.IO Connection Test</h1>
+        <div>
+            <button id="connect">Connect</button>
+            <button id="disconnect">Disconnect</button>
+            <button id="test">Send Test Broadcast</button>
+            <span id="status">Disconnected</span>
+        </div>
+        <h2>Connection Log</h2>
+        <div id="log"></div>
+
+        <script>
+            let socket;
+            const statusEl = document.getElementById("status");
+            const logEl = document.getElementById("log");
+
+            // Log a message to the page
+            function log(message, isError = false) {
+                const div = document.createElement("div");
+                div.className = "message " + (isError ? "error" : "success");
+                div.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+                logEl.prepend(div);
+            }
+
+            // Log an object as JSON
+            function logJson(obj) {
+                const div = document.createElement("div");
+                div.className = "message";
+
+                const pre = document.createElement("pre");
+                pre.textContent = JSON.stringify(obj, null, 2);
+
+                div.append(pre);
+                logEl.prepend(div);
+            }
+
+            // Connect to Socket.IO server
+            document.getElementById("connect").addEventListener("click", () => {
+                try {
+                    socket = io("http://127.0.0.1:5000", {
+                        transports: ["websocket"],
+                    });
+
+                    socket.on("connect", () => {
+                        statusEl.textContent = `Connected (ID: ${socket.id})`;
+                        statusEl.style.color = "green";
+                        log("Connected to Socket.IO server");
+                    });
+
+                    socket.on("disconnect", (reason) => {
+                        statusEl.textContent = "Disconnected";
+                        statusEl.style.color = "red";
+                        log(`Disconnected: ${reason}`, true);
+                    });
+
+                    socket.on("connect_error", (error) => {
+                        statusEl.textContent = "Connection Error";
+                        statusEl.style.color = "red";
+                        log(`Connection error: ${error.message}`, true);
+                    });
+
+                    // Listen for aura update events
+                    socket.on("aura_update", (data) => {
+                        log("Received aura_update event:");
+                        logJson(data);
+
+                        // Check tips format
+                        log(`Tips is array: ${Array.isArray(data.tips)}`);
+                        if (data.tips) {
+                            log(
+                                `Tips type: ${typeof data.tips}, value: ${JSON.stringify(
+                                    data.tips
+                                )}`
+                            );
+                        }
+                    });
+                } catch (err) {
+                    log(`Error creating socket: ${err.message}`, true);
+                }
+            });
+
+            // Disconnect from server
+            document.getElementById("disconnect").addEventListener("click", () => {
+                if (socket) {
+                    socket.disconnect();
+                    log("Manually disconnected");
+                }
+            });
+
+            // Test broadcast
+            document.getElementById("test").addEventListener("click", async () => {
+                try {
+                    const response = await fetch("http://127.0.0.1:5000/test_broadcast");
+                    const data = await response.json();
+                    log("Test broadcast sent:");
+                    logJson(data);
+                } catch (err) {
+                    log(`Error sending test broadcast: ${err.message}`, true);
+                }
+            });
+        </script>
+    </body>
+</html>
