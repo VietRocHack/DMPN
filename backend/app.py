@@ -6,6 +6,10 @@ import logging
 from flask import Flask, request, jsonify
 from dotenv import load_dotenv
 from jinja2 import Environment, FileSystemLoader
+from flask_cors import CORS
+
+app = Flask(__name__)
+CORS(app)  # Allow CORS from all origins
 
 env = Environment(loader=FileSystemLoader("templates"))
 prompt_template = env.get_template("aura_prompt.jinja")
