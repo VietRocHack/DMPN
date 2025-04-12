@@ -39,7 +39,7 @@ class TestAuraAnalyzer(unittest.TestCase):
         self.assertIn('score_change', result)
         self.assertIn('updated_score', result)
         self.assertIn('analysis', result)
-        self.assertIn('tips_for_improvement', result)
+        self.assertIn('tips', result)
 
         # Check WebSocket broadcast
         received = self.socketio_client.get_received()

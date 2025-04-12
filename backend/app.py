@@ -109,9 +109,9 @@ def analyze_aura():
         messages.insert(1, {"role": "system", "content": f"Previous analyses: {json.dumps(history[-3:])}"})
 
     try:
-        logging.info("Sending images to GPT-4o...")
+        logging.info("Sending images to OpenAI...")
         response = openai.chat.completions.create(
-            model="gpt-4o",
+            model="gpt-4o-mini",
             messages=messages,
             max_tokens=500,
             temperature=0.7,
@@ -122,10 +122,10 @@ def analyze_aura():
         result = safe_parse_json(reply)
 
         if not result:
-            return jsonify({'error': 'Invalid JSON format returned by GPT-4o.'}), 500
+            return jsonify({'error': 'Invalid JSON format returned by OpenAI.'}), 500
 
         # Check required keys
-        required_keys = {"analysis", "score_change", "reason", "updated_score", "tips_for_improvement"}
+        required_keys = {"analysis", "score_change", "reason", "updated_score", "tips"}
         if not required_keys.issubset(result):
             return jsonify({'error': 'Missing fields in GPT response.'}), 500
 
