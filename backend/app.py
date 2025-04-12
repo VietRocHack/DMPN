@@ -1,10 +1,14 @@
 import os
 import base64
 import json
-from flask import Flask, request, jsonify
-from dotenv import load_dotenv
 import openai
 import logging
+from flask import Flask, request, jsonify
+from dotenv import load_dotenv
+from jinja2 import Environment, FileSystemLoader
+
+env = Environment(loader=FileSystemLoader("templates"))
+prompt_template = env.get_template("aura_prompt.jinja")
 
 load_dotenv()
 
@@ -62,14 +66,9 @@ def analyze_aura():
         "image_url": {"url": f"data:image/jpeg;base64,{screenshot_b64}"}
     }
 
-    system_prompt = (
-        "You are an 'Aura Analyzer' AI that evaluates a developer's productivity "
-        "based on their webcam and screen images. Provide a JSON response with the following fields:\n"
-        "- 'analysis': A humorous analysis of the images.\n"
-        "- 'score_change': An integer indicating the change in aura score (-10 to +10).\n"
-        "- 'reason': A meme-style reason for the score change.\n"
-        "- 'updated_score': The new aura score after applying the change.\n"
-        "Ensure the response is in JSON format."
+    system_prompt = prompt_template.render(
+        current_score=current_score,
+        history=json.dumps(history[-3:], indent=2) if history else ""
     )
 
     messages = [
@@ -90,10 +89,12 @@ def analyze_aura():
             model="gpt-4o",
             messages=messages,
             max_tokens=500,
-            temperature=0.7
+            temperature=0.7,
+            response_format={"type": "json_object"}
         )
 
         reply = response.choices[0].message.content
+        print(reply)
         result = safe_parse_json(reply)
 
         if not result:
