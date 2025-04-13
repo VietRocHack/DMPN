@@ -22,7 +22,7 @@ export default function Dashboard() {
     const [webcamImage, setWebcamImage] = useState<string | null>(null);
     const [screenImage, setScreenImage] = useState<string | null>(null);
     const [captureCount, setCaptureCount] = useState(0);
-    const [totalPoints, setTotalPoints] = useState<number>(0);
+    const [totalPoints, setTotalPoints] = useState<number>(50);
     const [lastAnalysis, setLastAnalysis] = useState<string | null>(null);
     const [useRealApi, setUseRealApi] = useState<boolean>(API_CONFIG.USE_REAL_API);
     const [apiMessage, setApiMessage] = useState<string | null>(null);

@@ -38,7 +38,7 @@ interface AuraMessage {
 
 export default function AdminDashboard() {
     // State for total aura points
-    const [totalPoints, setTotalPoints] = useState<number>(0);
+    const [totalPoints, setTotalPoints] = useState<number>(50);
     // State for snapshot history
     const [snapshots, setSnapshots] = useState<AuraMessage[]>([]);
     // WebSocket connection status
