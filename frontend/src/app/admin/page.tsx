@@ -20,9 +20,9 @@ const API_CONFIG = {
     // Set this to false to use dummy data, true to use the actual backend
     USE_REAL_API: true,
     // API endpoint URL - update this to your actual backend URL
-    API_URL: "http://127.0.0.1:5000",
+    API_URL: "http://172.23.28.117:5000",
     // WebSocket URL - should match your backend WebSocket endpoint
-    IO_URL: "http://127.0.0.1:5000",
+    IO_URL: "http://172.23.28.117:5000",
 };
 
 // Define the types for the WebSocket message
