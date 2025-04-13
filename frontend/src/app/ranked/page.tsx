@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import Image from "next/image";
 
 // Import the emotes
-import coverImage from "@/images/cover_image.png";
+import coverImage from "@/images/cover_image_2.png";
 import happyEmote from "@/images/happy.png"; 
 import lazyEmote from "@/images/lazy.png";
 import indifferentEmote from "@/images/indifferent.png";

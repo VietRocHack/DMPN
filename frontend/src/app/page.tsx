@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import coverImage from "@/images/cover_image.png";
+import coverImage from "@/images/cover_image_2.png";
 
 export default function Home() {
     return (
