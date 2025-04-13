@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Press_Start_2P, VT323 } from "next/font/google";
 import "./globals.css";
+import Navbar from "@/components/Navbar";
 
 const pressStart2P = Press_Start_2P({
     weight: "400",
@@ -22,7 +23,12 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
     return (
         <html lang="en">
-            <body className={`${pressStart2P.variable} ${vt323.variable}`}>{children}</body>
+            <body className={`${pressStart2P.variable} ${vt323.variable}`}>
+                <Navbar />
+                <div className="pt-16">
+                    {children}
+                </div>
+            </body>
         </html>
     );
 }

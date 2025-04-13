@@ -2,7 +2,7 @@ import Link from "next/link";
 
 export default function Home() {
     return (
-        <main className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-purple-600 to-blue-500 p-4">
+        <main className="min-h-[calc(100vh-64px)] flex flex-col items-center justify-center bg-gradient-to-br from-purple-600 to-blue-500 p-4">
             <div className="text-center space-y-8 max-w-2xl">
                 <h1 className="text-6xl font-bold text-white mb-4 font-['Press_Start_2P']">DMPN</h1>
                 <h2 className="text-2xl text-white/90 font-['VT323']">
