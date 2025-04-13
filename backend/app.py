@@ -131,11 +131,17 @@ def analyze_aura():
         # Prepare GPT-4o input
         webcam_image_data = {
             "type": "image_url",
-            "image_url": {"url": f"data:image/jpeg;base64,{webcam_image_b64}"}
+            "image_url": {
+                "url": f"data:image/jpeg;base64,{webcam_image_b64}",
+                "detail": "low",
+            }
         }
         screenshot_image_data = {
             "type": "image_url",
-            "image_url": {"url": f"data:image/jpeg;base64,{screenshot_b64}"}
+            "image_url": {
+                "url": f"data:image/jpeg;base64,{screenshot_b64}",
+                "detail": "low"
+            },
         }
 
         system_prompt = prompt_template.render(

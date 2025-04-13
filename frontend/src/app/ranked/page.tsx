@@ -65,7 +65,10 @@ export default function RankedAura() {
     const intervalValueRef = useRef<number>(captureInterval);
     
     // Add states for image data
+    // These are used in the capture process but not displayed directly in UI
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [webcamImage, setWebcamImage] = useState<string | null>(null);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [screenImage, setScreenImage] = useState<string | null>(null);
     const [apiMessage, setApiMessage] = useState<string | null>(null);
 
@@ -1128,7 +1131,7 @@ export default function RankedAura() {
                                             <div className="text-4xl font-bold font-['Press_Start_2P']">
                                                 {enemyAuraScore}
                                             </div>
-                                            <div className="text-sm mt-1 font-['VT323']">{enemyName}'s Aura</div>
+                                            <div className="text-sm mt-1 font-['VT323']">{enemyName}&apos;s Aura</div>
                                         </div>
                                         <div className="absolute inset-0 flex items-center justify-center">
                                             <div className="animate-ping absolute w-full h-full rounded-full bg-white/10 opacity-50"></div>
