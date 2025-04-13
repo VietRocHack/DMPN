@@ -2,6 +2,15 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
+import Image from "next/image";
+
+// Import images
+import coverImage from "@/images/cover_image.png";
+import happyEmote from "@/images/happy.png"; 
+import lazyEmote from "@/images/lazy.png";
+import indifferentEmote from "@/images/indifferent.png";
+import competitiveEmote from "@/images/competitive.png";
+import tiredEmote from "@/images/tired.png";
 
 // Constants for the application
 const API_CONFIG = {
@@ -11,6 +20,15 @@ const API_CONFIG = {
     API_URL: "http://127.0.0.1:5000",
     // Default capture interval in seconds
     DEFAULT_INTERVAL: 5,
+};
+
+// Helper function to get the appropriate emote based on score and changes
+const getAuraEmote = (score: number, lastChange: number | null) => {
+    if (score < 30) return tiredEmote;
+    if (score > 80) return happyEmote;
+    if (lastChange && lastChange > 5) return competitiveEmote;
+    if (lastChange && lastChange < 0) return indifferentEmote;
+    return lazyEmote;
 };
 
 export default function Dashboard() {
@@ -26,6 +44,8 @@ export default function Dashboard() {
     const [lastAnalysis, setLastAnalysis] = useState<string | null>(null);
     const [useRealApi, setUseRealApi] = useState<boolean>(API_CONFIG.USE_REAL_API);
     const [apiMessage, setApiMessage] = useState<string | null>(null);
+    const [lastPointChange, setLastPointChange] = useState<number | null>(null);
+    const [activityHistory, setActivityHistory] = useState<Array<{change: number; reason: string; timestamp: string}>>([]);
 
     const videoRef = useRef<HTMLVideoElement>(null);
     const screenRef = useRef<HTMLVideoElement>(null);
@@ -252,7 +272,7 @@ export default function Dashboard() {
         setScreenImage(screenImageData);
         setCaptureCount((prev) => prev + 1);
 
-        // Show popup
+        // Show notification popup but only briefly
         setShowPopup(true);
         setTimeout(() => setShowPopup(false), 2000);
 
@@ -366,8 +386,24 @@ export default function Dashboard() {
                 console.log("API Result:", result);
 
                 // Update points and analysis
+                const pointChange = result.updated_score - totalPoints;
                 setTotalPoints(result.updated_score);
                 setLastAnalysis(result.analysis);
+                setLastPointChange(pointChange);
+                
+                // Add to activity history
+                const now = new Date();
+                const timestamp = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+                
+                // Use reason from API if available, otherwise use analysis
+                const reason = result.reason || result.analysis;
+                
+                setActivityHistory(prev => [{
+                    change: pointChange,
+                    reason: reason || "Aura analyzed",
+                    timestamp
+                }, ...prev].slice(0, 10)); // Keep last 10 entries
+                
                 setApiMessage("Data sent successfully!");
 
                 // Hide the message after 3 seconds
@@ -383,12 +419,44 @@ export default function Dashboard() {
             const pointChange = Math.floor(Math.random() * 21) - 10; // -10 to +10
             const newPoints = totalPoints + pointChange;
 
+            // Generate a meme-style reason
+            const positiveReasons = [
+                "Epic code energy detected!",
+                "Keyboard warrior mode activated!",
+                "Clean code vibes intensify!",
+                "Syntax mastery observed!",
+                "Bug squashing champion!"
+            ];
+            
+            const negativeReasons = [
+                "Coffee levels critically low!",
+                "Distracted by cat videos!",
+                "Stackoverflow connection lost!",
+                "Needs more RGB lighting!",
+                "Syntax error in brain.js!"
+            ];
+            
+            const reason = pointChange >= 0 
+                ? positiveReasons[Math.floor(Math.random() * positiveReasons.length)]
+                : negativeReasons[Math.floor(Math.random() * negativeReasons.length)];
+
             setTotalPoints(newPoints);
             setLastAnalysis(
                 pointChange >= 0
                     ? "Your focused coding stance is impressive! Keep it up."
                     : "You seem distracted. Try to focus more on your code."
             );
+            setLastPointChange(pointChange);
+            
+            // Add to activity history
+            const now = new Date();
+            const timestamp = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+            
+            setActivityHistory(prev => [{
+                change: pointChange,
+                reason: reason,
+                timestamp
+            }, ...prev].slice(0, 10));
 
             setApiMessage("Using dummy data (API disabled)");
             setTimeout(() => setApiMessage(null), 3000);
@@ -615,141 +683,178 @@ export default function Dashboard() {
         );
     };
 
-    // Function to determine the aura color based on points
-    const getAuraColor = () => {
-        if (totalPoints < 30) return "#ef4444"; // red-500
-        if (totalPoints < 50) return "#f97316"; // orange-500
-        if (totalPoints < 70) return "#eab308"; // yellow-500
-        if (totalPoints < 90) return "#22c55e"; // green-500
-        return "#3b82f6"; // blue-500
+    // Function to update aura points with animation
+    const updateAuraPoints = (newPoints: number, analysis: string) => {
+        const change = newPoints - totalPoints;
+        setLastPointChange(change);
+        setTotalPoints(newPoints);
+        setLastAnalysis(analysis);
+        
+        // Add to activity history
+        const now = new Date();
+        const timestamp = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+        
+        setActivityHistory(prev => [{
+            change,
+            reason: analysis || "Aura analyzed",
+            timestamp
+        }, ...prev].slice(0, 10)); // Keep last 10 entries
     };
 
-    // Function to determine the aura level based on points
+    // Get aura color based on points
+    const getAuraColor = () => {
+        if (totalPoints < 0) return "#ef4444"; // red-500
+        if (totalPoints < 50) return "#f97316"; // orange-500
+        if (totalPoints < 100) return "#eab308"; // yellow-500
+        if (totalPoints < 200) return "#22c55e"; // green-500
+        return "#3b82f6"; // blue-500
+    };
+    
+    // Get aura level text
     const getAuraLevel = () => {
-        if (totalPoints < 30) return "Code Newbie";
-        if (totalPoints < 50) return "Script Kiddie";
-        if (totalPoints < 70) return "Function Fiend";
-        if (totalPoints < 90) return "Algorithm Ace";
-        return "Syntax Sorcerer";
+        if (totalPoints < 0) return "Debugging Disaster";
+        if (totalPoints < 50) return "Code Cadet";
+        if (totalPoints < 100) return "Function Fanatic"; 
+        if (totalPoints < 200) return "Algorithm Ace";
+        return "Programming Prodigy";
     };
 
     return (
         <div className="min-h-[calc(100vh-64px)] bg-gradient-to-br from-slate-900 to-gray-800 text-gray-200 p-6">
             <div className="max-w-7xl mx-auto">
-                {/* Page Header */}
-                <header className="mb-8">
-                    <h1 className="text-4xl font-bold text-blue-400 mb-2 font-['Press_Start_2P']">User Dashboard</h1>
-                    <p className="text-lg text-gray-300 font-['VT323']">
-                        Share your webcam and screen to analyze your developer aura
-                    </p>
-                </header>
-
-                {/* Permission Request Section */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-                    {/* Webcam Section */}
-                    <div className="bg-slate-800 rounded-lg p-6 shadow-md">
-                        <h2 className="text-2xl font-bold mb-4 text-blue-300 font-['VT323']">Webcam</h2>
-                        <div className="mb-4">
-                            {webcamPermission === null ? (
-                                <button
-                                    onClick={requestWebcam}
-                                    className="px-6 py-3 bg-blue-700 text-white rounded-lg hover:bg-blue-600 transition-colors font-['VT323'] text-xl"
-                                >
-                                    Enable Webcam
-                                </button>
-                            ) : webcamPermission ? (
-                                <div className="text-green-400 font-['VT323'] text-lg">
-                                    ✓ Webcam enabled
-                                </div>
-                            ) : (
-                                <div className="text-red-400 font-['VT323'] text-lg">
-                                    ✗ Webcam access denied
-                                </div>
-                            )}
+                {/* Hero Banner */}
+                <div className="mb-8 rounded-xl overflow-hidden shadow-[0_0_25px_rgba(59,130,246,0.2)] border border-blue-500/20 relative">
+                    <div className="relative h-48 lg:h-64">
+                        <Image
+                            src={coverImage}
+                            alt="Developer Aura Tracking"
+                            layout="fill"
+                            objectFit="cover"
+                            className="opacity-80"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-r from-slate-900/90 via-slate-900/70 to-transparent"></div>
+                        <div className="absolute inset-0 flex flex-col justify-center px-8">
+                            <h1 className="text-4xl font-bold text-blue-400 mb-2 font-['Press_Start_2P'] drop-shadow-lg">User Dashboard</h1>
+                            <p className="text-lg text-gray-300 font-['VT323'] max-w-xl">
+                                Share your webcam and screen to analyze your developer aura. Our AI will judge your programming skills and provide feedback.
+                            </p>
                         </div>
-                        <div className="relative bg-slate-700 rounded-lg overflow-hidden aspect-video">
-                            <video
-                                ref={videoRef}
-                                autoPlay
-                                playsInline
-                                muted
-                                className="w-full h-full object-cover"
-                            ></video>
-                            {!webcamPermission && (
-                                <div className="absolute inset-0 flex items-center justify-center bg-slate-900/80 text-gray-300 font-['VT323'] text-xl">
-                                    No webcam access
+                        
+                        {/* Aura Status Badge */}
+                        <div className="absolute right-8 top-1/2 transform -translate-y-1/2 bg-slate-800/90 rounded-lg p-4 border border-blue-500/30 hidden md:block">
+                            <div className="flex items-center gap-4">
+                                <div className="relative w-20 h-20">
+                                    <Image
+                                        src={getAuraEmote(totalPoints, lastPointChange)}
+                                        alt="Aura Status"
+                                        layout="fill"
+                                        objectFit="contain"
+                                    />
                                 </div>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Screen Capture Section */}
-                    <div className="bg-slate-800 rounded-lg p-6 shadow-md">
-                        <h2 className="text-2xl font-bold mb-4 text-blue-300 font-['VT323']">Screen Capture</h2>
-                        <div className="mb-4">
-                            {screenPermission === null ? (
-                                <button
-                                    onClick={requestScreen}
-                                    className="px-6 py-3 bg-blue-700 text-white rounded-lg hover:bg-blue-600 transition-colors font-['VT323'] text-xl"
-                                >
-                                    Share Screen
-                                </button>
-                            ) : screenPermission ? (
-                                <div className="text-green-400 font-['VT323'] text-lg">
-                                    ✓ Screen sharing enabled
+                                <div>
+                                    <div className="text-gray-300 font-['VT323'] text-lg">Your Aura:</div>
+                                    <div className="text-4xl font-bold font-['VT323']" style={{ color: getAuraColor() }}>
+                                        {totalPoints}
+                                    </div>
+                                    <div className="text-sm font-['VT323']" style={{ color: getAuraColor() }}>
+                                        {getAuraLevel()}
+                                    </div>
                                 </div>
-                            ) : (
-                                <div className="text-red-400 font-['VT323'] text-lg">
-                                    ✗ Screen sharing denied
-                                </div>
-                            )}
-                        </div>
-                        <div className="relative bg-slate-700 rounded-lg overflow-hidden aspect-video">
-                            <video
-                                ref={screenRef}
-                                autoPlay
-                                playsInline
-                                muted
-                                className="w-full h-full object-cover"
-                            ></video>
-                            {!screenPermission && (
-                                <div className="absolute inset-0 flex items-center justify-center bg-slate-900/80 text-gray-300 font-['VT323'] text-xl">
-                                    No screen access
-                                </div>
-                            )}
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                {/* Controls and Stats Section */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-                    {/* Aura Points and Control Section */}
-                    <div className="bg-slate-800 rounded-lg p-6 shadow-md">
-                        <div className="flex flex-col items-center mb-6">
-                            <h2 className="text-3xl font-bold text-center mb-2 text-blue-300 font-['VT323']">
-                                Developer Aura Points
-                            </h2>
-                            <div
-                                className="text-5xl font-bold mb-1 font-['VT323']"
-                                style={{ color: getAuraColor() }}
-                            >
-                                {totalPoints}
+                {/* Main Dashboard Content */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    {/* Left Column - Webcam & Screen Capture */}
+                    <div className="lg:col-span-2 space-y-6">
+                        {/* Permission Request Section */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {/* Webcam Section */}
+                            <div className="bg-slate-800 rounded-lg p-6 shadow-md">
+                                <h2 className="text-2xl font-bold mb-4 text-blue-300 font-['VT323']">Webcam</h2>
+                                <div className="mb-4">
+                                    {webcamPermission === null ? (
+                                        <button
+                                            onClick={requestWebcam}
+                                            className="px-6 py-3 bg-blue-700 text-white rounded-lg hover:bg-blue-600 transition-colors font-['VT323'] text-xl"
+                                        >
+                                            Enable Webcam
+                                        </button>
+                                    ) : webcamPermission ? (
+                                        <div className="text-green-400 font-['VT323'] text-lg">
+                                            ✓ Webcam enabled
+                                        </div>
+                                    ) : (
+                                        <div className="text-red-400 font-['VT323'] text-lg">
+                                            ✗ Webcam access denied
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="relative bg-slate-900 rounded-lg overflow-hidden aspect-video">
+                                    <video
+                                        ref={videoRef}
+                                        autoPlay
+                                        playsInline
+                                        muted
+                                        className="w-full h-full object-cover"
+                                    ></video>
+                                    {!webcamPermission && (
+                                        <div className="absolute inset-0 flex items-center justify-center bg-slate-900/80 text-gray-300 font-['VT323'] text-xl">
+                                            No webcam access
+                                        </div>
+                                    )}
+                                </div>
                             </div>
-                            <div
-                                className="text-2xl font-['VT323']"
-                                style={{ color: getAuraColor() }}
-                            >
-                                {getAuraLevel()}
+
+                            {/* Screen Capture Section */}
+                            <div className="bg-slate-800 rounded-lg p-6 shadow-md">
+                                <h2 className="text-2xl font-bold mb-4 text-blue-300 font-['VT323']">Screen Capture</h2>
+                                <div className="mb-4">
+                                    {screenPermission === null ? (
+                                        <button
+                                            onClick={requestScreen}
+                                            className="px-6 py-3 bg-blue-700 text-white rounded-lg hover:bg-blue-600 transition-colors font-['VT323'] text-xl"
+                                        >
+                                            Share Screen
+                                        </button>
+                                    ) : screenPermission ? (
+                                        <div className="text-green-400 font-['VT323'] text-lg">
+                                            ✓ Screen sharing enabled
+                                        </div>
+                                    ) : (
+                                        <div className="text-red-400 font-['VT323'] text-lg">
+                                            ✗ Screen sharing denied
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="relative bg-slate-900 rounded-lg overflow-hidden aspect-video">
+                                    <video
+                                        ref={screenRef}
+                                        autoPlay
+                                        playsInline
+                                        muted
+                                        className="w-full h-full object-cover"
+                                    ></video>
+                                    {!screenPermission && (
+                                        <div className="absolute inset-0 flex items-center justify-center bg-slate-900/80 text-gray-300 font-['VT323'] text-xl">
+                                            No screen access
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         </div>
 
-                        {/* Capture Controls */}
-                        <div className="mb-6">
-                            <div className="flex mb-4">
+                        {/* Capture Controls Section */}
+                        <div className="bg-slate-800 rounded-lg p-6 shadow-md">
+                            <h2 className="text-2xl font-bold mb-4 text-blue-300 font-['VT323']">Capture Controls</h2>
+                            
+                            <div className="mb-6">
                                 <button
                                     onClick={isCapturing ? stopCapturing : startCapturing}
                                     disabled={!webcamPermission || !screenPermission}
-                                    className={`flex-1 px-6 py-3 text-xl rounded-lg font-['VT323'] transition-colors ${
+                                    className={`w-full px-6 py-4 text-xl rounded-lg font-['VT323'] transition-colors flex items-center justify-center gap-2 ${
                                         isCapturing
                                             ? "bg-red-600 hover:bg-red-700 text-white"
                                             : "bg-blue-700 hover:bg-blue-600 text-white"
@@ -759,11 +864,25 @@ export default function Dashboard() {
                                             : ""
                                     }`}
                                 >
-                                    {isCapturing ? "Stop Capturing" : "Start Capturing"}
+                                    {isCapturing ? (
+                                        <>
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                            </svg>
+                                            Stop Aura Capture
+                                        </>
+                                    ) : (
+                                        <>
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                            Start Aura Capture
+                                        </>
+                                    )}
                                 </button>
                             </div>
-
-                            {/* Interval Control */}
+                            
                             <div className="mb-4">
                                 <label className="block mb-2 text-gray-300 font-['VT323'] text-lg">
                                     Capture interval: {captureInterval} seconds
@@ -774,103 +893,235 @@ export default function Dashboard() {
                                     max="30"
                                     value={captureInterval}
                                     onChange={handleIntervalChange}
-                                    className="w-full h-2 bg-slate-600 rounded-lg appearance-none cursor-pointer"
+                                    className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer"
                                 />
                             </div>
-
-                            {/* API Mode Toggle */}
-                            <div className="flex items-center space-x-3">
-                                <span className="text-gray-300 font-['VT323'] text-lg">
-                                    Use mock data
-                                </span>
-                                <label className="relative inline-flex items-center cursor-pointer">
-                                    <input
-                                        type="checkbox"
-                                        checked={useRealApi}
-                                        onChange={() => setUseRealApi(!useRealApi)}
-                                        className="sr-only peer"
-                                    />
-                                    <div className="w-11 h-6 bg-slate-700 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                                </label>
-                                <span className="text-gray-300 font-['VT323'] text-lg">
-                                    Use real API
-                                </span>
-                            </div>
                         </div>
-
-                        {/* Capture Status */}
-                        <div className="mb-6">
-                            <h3 className="text-xl font-bold mb-2 text-blue-300 font-['VT323']">
-                                Status
-                            </h3>
-                            <div className="bg-slate-900 p-4 rounded-lg text-lg font-['VT323']">
-                                {isCapturing ? (
-                                    <div className="text-green-400">
-                                        Capturing active - {captureCount} snapshots sent
+                        
+                        {/* Aura Visualization (only shown when capturing) */}
+                        {isCapturing && (
+                            <div className="bg-slate-800 rounded-lg p-6 shadow-md">
+                                <h2 className="text-2xl font-bold mb-4 text-blue-300 font-['VT323']">Aura Visualization</h2>
+                                
+                                <div className="flex flex-col items-center mb-6">
+                                    <div className="relative w-32 h-32 mb-4">
+                                        <Image
+                                            src={getAuraEmote(totalPoints, lastPointChange)}
+                                            alt="Aura Visualization"
+                                            layout="fill"
+                                            objectFit="contain"
+                                        />
+                                        
+                                        {lastPointChange && (
+                                            <div className={`absolute -top-4 -right-4 rounded-full px-2 py-1 text-white font-bold
+                                                ${lastPointChange > 0 ? 'bg-green-500' : 'bg-red-500'}`}>
+                                                {lastPointChange > 0 ? `+${lastPointChange}` : lastPointChange}
+                                            </div>
+                                        )}
                                     </div>
-                                ) : (
-                                    <div className="text-gray-400">Waiting to start capture...</div>
-                                )}
-                                {apiMessage && (
-                                    <div className="mt-2 text-yellow-300 text-base">
-                                        {apiMessage}
+                                    
+                                    <div className="w-full max-w-md">
+                                        <div className="flex justify-between items-center mb-2">
+                                            <span className="text-red-400 font-['VT323']">Debugging Disaster</span>
+                                            <span className="text-blue-400 font-['VT323']">Programming Prodigy</span>
+                                        </div>
+                                        <div className="w-full bg-slate-900 h-4 rounded-full overflow-hidden">
+                                            <div
+                                                className="h-full transition-all duration-500 ease-out"
+                                                style={{
+                                                    width: `${Math.min(Math.max(totalPoints, 0), 200) / 2}%`,
+                                                    backgroundColor: getAuraColor()
+                                                }}
+                                            ></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                {lastAnalysis && (
+                                    <div className="bg-slate-900 p-4 rounded-lg">
+                                        <h3 className="text-lg font-bold mb-2 text-blue-300 font-['VT323']">AI Analysis:</h3>
+                                        <p className="text-gray-300 font-['VT323']">{lastAnalysis}</p>
                                     </div>
                                 )}
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Last Analysis */}
-                    <div className="bg-slate-800 rounded-lg p-6 shadow-md">
-                        <h2 className="text-2xl font-bold mb-4 text-blue-300 font-['VT323']">Last Analysis</h2>
-                        {lastAnalysis ? (
-                            <div className="bg-slate-900 p-4 rounded-lg">
-                                <div className="font-['VT323'] text-xl text-gray-300">{lastAnalysis}</div>
-                            </div>
-                        ) : (
-                            <div className="bg-slate-900 p-4 rounded-lg text-gray-400 font-['VT323'] text-xl">
-                                No data yet. Start capturing to see analysis results!
                             </div>
                         )}
-
-                        {/* Ranked Mode CTA */}
-                        <div className="mt-8 p-6 bg-slate-700 rounded-lg text-center">
-                            <h3 className="text-2xl font-bold mb-3 text-blue-300 font-['VT323']">
-                                Ready to compete?
-                            </h3>
-                            <p className="text-lg text-gray-300 mb-4 font-['VT323']">
-                                Challenge other developers in ranked mode and see who has the higher
-                                developer aura!
+                    </div>
+                    
+                    {/* Right Column - Activity & Stats */}
+                    <div className="space-y-6">
+                        {/* Mobile Aura Display (visible only on mobile) */}
+                        <div className="bg-slate-800 rounded-lg p-6 shadow-md flex items-center gap-4 md:hidden">
+                            <div className="relative w-16 h-16">
+                                <Image
+                                    src={getAuraEmote(totalPoints, lastPointChange)}
+                                    alt="Aura Status"
+                                    layout="fill"
+                                    objectFit="contain"
+                                />
+                            </div>
+                            <div>
+                                <div className="text-gray-300 font-['VT323']">Your Aura:</div>
+                                <div className="text-3xl font-bold font-['VT323']" style={{ color: getAuraColor() }}>
+                                    {totalPoints}
+                                </div>
+                                <div className="text-sm font-['VT323']" style={{ color: getAuraColor() }}>
+                                    {getAuraLevel()}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        {/* Status and Stats */}
+                        <div className="bg-slate-800 rounded-lg p-6 shadow-md">
+                            <h2 className="text-2xl font-bold mb-4 text-blue-300 font-['VT323']">Session Stats</h2>
+                            
+                            <div className="space-y-4">
+                                <div className="flex justify-between items-center">
+                                    <span className="text-gray-300 font-['VT323']">Status:</span>
+                                    <span className={`font-['VT323'] ${isCapturing ? 'text-green-400' : 'text-yellow-400'}`}>
+                                        {isCapturing ? 'Capturing Active' : 'Ready to Start'}
+                                    </span>
+                                </div>
+                                
+                                <div className="flex justify-between items-center">
+                                    <span className="text-gray-300 font-['VT323']">Snapshots Sent:</span>
+                                    <span className="text-blue-300 font-['VT323'] font-bold">{captureCount}</span>
+                                </div>
+                                
+                                <div className="flex justify-between items-center">
+                                    <span className="text-gray-300 font-['VT323']">Current Level:</span>
+                                    <span className="font-['VT323'] font-bold" style={{ color: getAuraColor() }}>
+                                        {getAuraLevel()}
+                                    </span>
+                                </div>
+                                
+                                <div className="flex justify-between items-center">
+                                    <span className="text-gray-300 font-['VT323']">Using API:</span>
+                                    <div className="flex items-center">
+                                        <span className="text-gray-300 font-['VT323'] mr-2">
+                                            {useRealApi ? 'Real' : 'Mock'}
+                                        </span>
+                                        <label className="relative inline-flex items-center cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                checked={useRealApi}
+                                                onChange={() => setUseRealApi(!useRealApi)}
+                                                className="sr-only peer"
+                                            />
+                                            <div className="w-11 h-6 bg-slate-700 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        {/* Activity Feed */}
+                        <div className="bg-slate-800 rounded-lg p-6 shadow-md">
+                            <h2 className="text-2xl font-bold mb-4 text-blue-300 font-['VT323']">Activity Feed</h2>
+                            
+                            {activityHistory.length === 0 ? (
+                                <div className="text-center py-8 text-gray-400 font-['VT323']">
+                                    No activity yet. Start capturing to see your aura changes!
+                                </div>
+                            ) : (
+                                <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
+                                    {activityHistory.map((item, index) => (
+                                        <div key={index} className="bg-slate-900 rounded-lg p-4 flex items-center gap-3">
+                                            {/* Points change indicator */}
+                                            <div className={`flex-shrink-0 w-12 h-12 flex items-center justify-center rounded-md font-['VT323'] text-lg font-bold ${
+                                                item.change > 0 ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+                                            }`}>
+                                                {item.change > 0 ? `+${item.change}` : item.change}
+                                            </div>
+                                            
+                                            {/* Emote image */}
+                                            <div className="flex-shrink-0">
+                                                <div className="relative w-12 h-12">
+                                                    <Image
+                                                        src={
+                                                            item.change > 5 ? competitiveEmote :
+                                                            item.change > 0 ? happyEmote :
+                                                            item.change < -5 ? tiredEmote :
+                                                            indifferentEmote
+                                                        }
+                                                        alt="Emotion"
+                                                        layout="fill"
+                                                        objectFit="contain"
+                                                    />
+                                                </div>
+                                            </div>
+                                            
+                                            {/* Content */}
+                                            <div className="flex-1 min-w-0">
+                                                {/* Reason as a "meme caption" */}
+                                                <p className="text-gray-100 font-['VT323'] text-lg font-bold mb-1">
+                                                    &ldquo;{item.reason}&rdquo;
+                                                </p>
+                                                <div className="flex justify-between text-xs">
+                                                    <span className={`${
+                                                        item.change > 0 ? 'text-green-400' : 'text-red-400'
+                                                    }`}>
+                                                        {item.change > 0 ? 'Aura boosted' : 'Aura diminished'}
+                                                    </span>
+                                                    <span className="text-gray-400">{item.timestamp}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                        
+                        {/* Try Ranked Battles */}
+                        <div className="bg-slate-800 rounded-lg p-6 shadow-md text-center">
+                            <div className="mb-4">
+                                <div className="relative w-16 h-16 mx-auto">
+                                    <Image
+                                        src={competitiveEmote}
+                                        alt="Competitive"
+                                        layout="fill"
+                                        objectFit="contain"
+                                    />
+                                </div>
+                            </div>
+                            <h2 className="text-2xl font-bold mb-2 text-blue-300 font-['VT323']">Ready for a Challenge?</h2>
+                            <p className="text-gray-300 font-['VT323'] mb-4">
+                                Test your developer aura against other programmers!
                             </p>
-                            <Link
-                                href="/ranked"
-                                className="inline-block px-8 py-3 bg-blue-700 text-white rounded-lg hover:bg-blue-600 transition-colors font-['VT323'] text-xl"
+                            <Link 
+                                href="/ranked" 
+                                className="inline-block px-6 py-3 bg-gradient-to-r from-purple-700 to-pink-700 text-white rounded-lg hover:from-purple-600 hover:to-pink-600 transition-colors font-['VT323'] text-xl"
                             >
-                                Enter Ranked Mode
+                                Try Ranked Aura Battles 🏆
                             </Link>
                         </div>
                     </div>
                 </div>
-
-                {/* Canvas elements used for capture (hidden) */}
+                
+                {/* Hidden canvas elements */}
                 <canvas ref={webcamCanvasRef} style={{ display: "none" }}></canvas>
                 <canvas ref={screenCanvasRef} style={{ display: "none" }}></canvas>
             </div>
-
-            {/* Capture Notification Popup */}
+            
+            {/* Popup Modal - Changed to be a notification instead of a requirement message */}
             {showPopup && (
-                <div className="fixed bottom-6 right-6 bg-slate-800 text-gray-200 rounded-lg shadow-lg p-4 border border-blue-500 max-w-md font-['VT323']">
+                <div className="fixed bottom-6 right-6 bg-slate-800 rounded-lg p-4 shadow-xl border border-blue-500/30 max-w-sm animate-fade-in-out z-50">
                     <div className="flex items-start">
-                        <div className="flex-shrink-0 text-blue-400 text-3xl">
-                            <span role="img" aria-label="camera">
-                                📸
-                            </span>
+                        <div className="flex-shrink-0 p-1">
+                            <div className="w-10 h-10 flex items-center justify-center rounded-full bg-blue-500/20">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 019.07 4h5.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                            </div>
                         </div>
-                        <div className="ml-4">
-                            <h3 className="text-lg font-bold text-blue-300">Snapshot Sent</h3>
-                            <p className="text-gray-300">
-                                Your webcam and screen snapshots have been sent for aura analysis.
+                        <div className="ml-4 flex-1">
+                            <h3 className="text-lg font-bold text-blue-300 font-['VT323']">Snapshot Captured</h3>
+                            <p className="text-gray-300 font-['VT323'] text-sm">
+                                Webcam and screen data sent for aura analysis
                             </p>
+                            <div className="text-xs text-gray-400 mt-1 font-['VT323']">
+                                Total captures: {captureCount}
+                            </div>
                         </div>
                     </div>
                 </div>

@@ -314,11 +314,11 @@ export default function AdminDashboard() {
 
     // Calculate aura color based on points
     const getAuraColor = () => {
-        if (totalPoints < 0) return "from-red-500 to-orange-500";
-        if (totalPoints < 50) return "from-orange-400 to-yellow-400";
-        if (totalPoints < 100) return "from-yellow-300 to-green-400";
-        if (totalPoints < 200) return "from-green-400 to-blue-500";
-        return "from-blue-400 to-purple-600";
+        if (totalPoints < 0) return "#ef4444"; // red-500
+        if (totalPoints < 50) return "#f97316"; // orange-500
+        if (totalPoints < 100) return "#eab308"; // yellow-500
+        if (totalPoints < 200) return "#22c55e"; // green-500
+        return "#3b82f6"; // blue-500
     };
 
     // Get aura level text
@@ -345,7 +345,7 @@ export default function AdminDashboard() {
                 <div className={`mb-6 p-4 rounded-lg font-['VT323'] text-xl ${
                     connected ? "bg-slate-800" : "bg-slate-800 border border-red-500"
                 }`}>
-                    <div className="flex items-center">
+                        <div className="flex items-center">
                         <div className={`w-3 h-3 rounded-full mr-2 ${
                             connected ? "bg-green-500" : "bg-red-500"
                         }`}></div>
@@ -400,24 +400,24 @@ export default function AdminDashboard() {
                                         {/* Snapshot Header */}
                                         <div className="p-3 flex items-center justify-between">
                                             <div className="text-xl font-['VT323']">
-                                                <span 
+                                        <span
                                                     className={`text-xl ${
                                                         (snapshot.pointChange || 0) > 0 
-                                                            ? "text-green-400" 
+                                                    ? "text-green-400"
                                                             : (snapshot.pointChange || 0) < 0 
                                                                 ? "text-red-400" 
                                                                 : "text-gray-400"
-                                                    }`}
-                                                >
+                                            }`}
+                                        >
                                                     {(snapshot.pointChange || 0) > 0 
-                                                        ? `+${snapshot.pointChange}` 
+                                                ? `+${snapshot.pointChange}`
                                                         : snapshot.pointChange}
-                                                </span>
+                                        </span>
                                                 <span className="text-gray-400 text-sm ml-2">
                                                     {snapshot.timestamp ? formatTime(snapshot.timestamp) : "Just now"}
-                                                </span>
+                                        </span>
                                             </div>
-                                        </div>
+                                    </div>
 
                                         {/* Image(s) */}
                                         <div className="flex flex-col sm:flex-row">
@@ -478,22 +478,32 @@ export default function AdminDashboard() {
 
                     {/* Middle Column - Aura Points */}
                     <div className="lg:col-span-4 xl:col-span-4 flex flex-col gap-6">
-                        <div className="bg-slate-800 rounded-lg p-6 flex-1 flex flex-col items-center justify-center shadow-md">
-                            <h2 className="text-2xl font-bold mb-2 text-blue-300 font-['VT323']">Developer Aura</h2>
-                            <div 
-                                className="text-8xl font-bold mb-2 font-['Press_Start_2P']"
-                                style={{ color: getAuraColor() }}
-                            >
-                                {totalPoints}
+                        <div className="bg-slate-800 rounded-lg p-6 flex-1 flex flex-col items-center justify-center shadow-md relative overflow-hidden">
+                            {/* Remove pulsating background */}
+                            
+                            {/* Remove outer glow */}
+                            
+                            <h2 className="text-2xl font-bold mb-2 text-blue-300 font-['VT323'] relative z-10">Developer Aura</h2>
+                            
+                            {/* Points display without pulsating ring */}
+                            <div className="relative my-4">
+                                {/* Remove pulsating ring */}
+                                <div 
+                                    className="text-8xl font-bold mb-2 font-['Press_Start_2P'] relative z-10"
+                                    style={{ color: getAuraColor() }}
+                                >
+                                    {totalPoints}
+                                </div>
                             </div>
+                            
                             <div 
-                                className="text-3xl text-center font-['VT323']"
+                                className="text-3xl text-center font-['VT323'] relative z-10"
                                 style={{ color: getAuraColor() }}
                             >
                                 {getAuraLevel()}
                             </div>
                             
-                            <div className="w-full bg-slate-900 h-4 rounded-full mt-6 overflow-hidden">
+                            <div className="w-full bg-slate-900 h-4 rounded-full mt-6 overflow-hidden relative z-10">
                                 <div 
                                     className="h-full rounded-full transition-all duration-500 ease-out"
                                     style={{ 
@@ -503,7 +513,7 @@ export default function AdminDashboard() {
                                 ></div>
                             </div>
                         </div>
-                        
+
                         {/* Image capture stats (simplified) */}
                         <div className="bg-slate-800 rounded-lg p-6 shadow-md">
                             <h2 className="text-2xl font-bold mb-4 text-blue-300 font-['VT323']">Session Stats</h2>
@@ -521,16 +531,16 @@ export default function AdminDashboard() {
                                         Current aura level
                                     </span>
                                     <span className="text-xl font-bold font-['VT323']" style={{ color: getAuraColor() }}>
-                                        {getAuraLevel()}
+                            {getAuraLevel()}
                                     </span>
-                                </div>
+                        </div>
                                 <div className="flex justify-between items-center">
                                     <span className="text-gray-300 font-['VT323'] text-lg">
                                         WebSocket status
                                     </span>
                                     <span className={`text-xl font-bold font-['VT323'] ${connected ? "text-green-400" : "text-red-400"}`}>
                                         {connected ? "Connected" : "Disconnected"}
-                                    </span>
+                            </span>
                                 </div>
                             </div>
                         </div>
@@ -542,7 +552,7 @@ export default function AdminDashboard() {
                         <div className="space-y-4 max-h-[75vh] overflow-y-auto pr-2">
                             {tips.map((tip, index) => (
                                 <div 
-                                    key={index} 
+                                        key={index}
                                     className={`p-4 rounded-lg ${
                                         index % 2 === 0 ? "bg-slate-700" : "bg-slate-900"
                                     }`}

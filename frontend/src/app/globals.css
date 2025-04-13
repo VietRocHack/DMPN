@@ -129,3 +129,41 @@ body {
 .animate-sparkle {
   animation: sparkle 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
+
+@layer components {
+  /* Add your custom component styles here */
+}
+
+@layer utilities {
+  /* Add your custom utilities here */
+  .animation-delay-300 {
+    animation-delay: 300ms;
+  }
+  .animation-delay-600 {
+    animation-delay: 600ms;
+  }
+}
+
+/* Custom animations */
+@keyframes fade-in-out {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  10% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  90% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+}
+
+.animate-fade-in-out {
+  animation: fade-in-out 2s ease-in-out forwards;
+}

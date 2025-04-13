@@ -1,6 +1,15 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import Image from "next/image";
+
+// Import the emotes
+import coverImage from "@/images/cover_image.png";
+import happyEmote from "@/images/happy.png"; 
+import lazyEmote from "@/images/lazy.png";
+import indifferentEmote from "@/images/indifferent.png";
+import competitiveEmote from "@/images/competitive.png";
+import tiredEmote from "@/images/tired.png";
 
 // Fake data for recent matches
 const RECENT_MATCHES = [
@@ -18,6 +27,36 @@ const API_CONFIG = {
     API_URL: "http://127.0.0.1:5000",
     // Default capture interval in seconds
     DEFAULT_INTERVAL: 5,
+};
+
+// Get user aura image based on score and trend
+const getUserAuraEmote = (score: number, history: {change: number; reason: string; timestamp: string}[]) => {
+    // Check recent trend (if available)
+    const recentTrend = history.length > 0 ? history[0].change : 0;
+    
+    if (score < 30) return tiredEmote; // Low score - tired
+    if (score > 80) {
+        return recentTrend > 0 ? competitiveEmote : happyEmote; // High score - competitive or happy
+    }
+    if (recentTrend > 5) return competitiveEmote; // Big gain - competitive
+    if (recentTrend < 0) return indifferentEmote; // Loss - indifferent
+    
+    return lazyEmote; // Default - lazy
+};
+
+// Get enemy aura image based on score and trend
+const getEnemyAuraEmote = (score: number, history: {change: number; reason: string; timestamp: string}[]) => {
+    // Check recent trend (if available)
+    const recentTrend = history.length > 0 ? history[0].change : 0;
+    
+    if (score < 30) return tiredEmote; // Low score - tired
+    if (score > 80) {
+        return recentTrend > 0 ? competitiveEmote : happyEmote; // High score - competitive or happy
+    }
+    if (recentTrend > 5) return competitiveEmote; // Big gain - competitive
+    if (recentTrend < 0) return indifferentEmote; // Loss - indifferent
+    
+    return lazyEmote; // Default - lazy
 };
 
 export default function RankedAura() {
@@ -317,8 +356,8 @@ export default function RankedAura() {
                     throw new Error("Failed to extract base64 data from images");
                 }
 
-                // Ensure userAuraScore is a number and defaults to 50 if undefined/null
-                const currentScore = userAuraScore || 50;
+                // Get the current aura score from state
+                const currentScore = userAuraScore;
 
                 console.log("Sending data to backend:", {
                     webcam_image_length: webcamBase64.length,
@@ -352,9 +391,9 @@ export default function RankedAura() {
                 const result = await response.json();
                 console.log("API Result:", result);
 
-                // Update points and add to history
-                const change = result.updated_score - currentScore;
-                const newScore = result.updated_score;
+                // Update points and add to history - Fix: use the change directly instead of difference from result.updated_score
+                const change = result.score_change || (result.updated_score - currentScore);
+                const newScore = currentScore + change;
                 
                 if (change !== 0) {
                     const now = new Date();
@@ -675,17 +714,17 @@ export default function RankedAura() {
             
             if (count <= 0) {
                 // Cleanup interval
-                if (countdownTimerRef.current) {
-                    clearInterval(countdownTimerRef.current);
-                    countdownTimerRef.current = null;
-                }
+                    if (countdownTimerRef.current) {
+                        clearInterval(countdownTimerRef.current);
+                        countdownTimerRef.current = null;
+                    }
                 
                 // Hide countdown modal
-                setShowCountdownModal(false);
+                    setShowCountdownModal(false);
                 
                 // Start match
-                setMatchStarted(true);
-                
+                    setMatchStarted(true);
+                    
                 // Double check stream connections one more time
                 setTimeout(() => {
                     console.log("Starting match, final stream check...");
@@ -720,13 +759,13 @@ export default function RankedAura() {
                         setRoundTimer((prev) => {
                             if (prev <= 1) {
                                 // Match is ending
-                                if (matchTimerRef.current) {
-                                    clearInterval(matchTimerRef.current);
-                                    matchTimerRef.current = null;
-                                }
-                                handleMatchEnd();
-                                return 0;
+                            if (matchTimerRef.current) {
+                                clearInterval(matchTimerRef.current);
+                                matchTimerRef.current = null;
                             }
+                            handleMatchEnd();
+                                return 0;
+                        }
                             return prev - 1;
                         });
                     }, 1000);
@@ -734,7 +773,7 @@ export default function RankedAura() {
                     // Start aura capture process
                     startAuraUpdates();
                 }, 500);
-            }
+                }
         }, 1000);
     };
 
@@ -746,20 +785,20 @@ export default function RankedAura() {
     
     // Calculate aura color based on points (for the circle visualization)
     const getUserAuraColor = () => {
-        if (userAuraScore < 0) return "from-red-500 to-orange-500";
-        if (userAuraScore < 50) return "from-orange-400 to-yellow-400";
-        if (userAuraScore < 100) return "from-yellow-300 to-green-400";
-        if (userAuraScore < 200) return "from-green-400 to-blue-500";
-        return "from-blue-400 to-purple-600";
+        if (userAuraScore < 0) return "#ef4444"; // red-500
+        if (userAuraScore < 50) return "#f97316"; // orange-500
+        if (userAuraScore < 100) return "#eab308"; // yellow-500
+        if (userAuraScore < 200) return "#22c55e"; // green-500
+        return "#3b82f6"; // blue-500
     };
     
     // Calculate enemy aura color
     const getEnemyAuraColor = () => {
-        if (enemyAuraScore < 0) return "from-red-500 to-orange-500";
-        if (enemyAuraScore < 50) return "from-orange-400 to-yellow-400";
-        if (enemyAuraScore < 100) return "from-yellow-300 to-green-400";
-        if (enemyAuraScore < 200) return "from-green-400 to-blue-500";
-        return "from-blue-400 to-purple-600";
+        if (enemyAuraScore < 0) return "#ef4444"; // red-500
+        if (enemyAuraScore < 50) return "#f97316"; // orange-500
+        if (enemyAuraScore < 100) return "#eab308"; // yellow-500
+        if (enemyAuraScore < 200) return "#22c55e"; // green-500
+        return "#3b82f6"; // blue-500
     };
     
     // Get aura level text
@@ -819,7 +858,7 @@ export default function RankedAura() {
                                                 <span className="font-semibold text-blue-300">{match.user1}</span>
                                                 <span className="text-gray-400">vs</span>
                                                 <span className="font-semibold text-blue-300">{match.user2}</span>
-                                            </div>
+                        </div>
                                             
                                             <div className="flex justify-between items-center mt-2">
                                                 <span className={`text-lg ${match.user1Score > match.user2Score ? "text-green-400" : "text-gray-300"}`}>
@@ -831,20 +870,31 @@ export default function RankedAura() {
                                                 <span className={`text-lg ${match.user2Score > match.user1Score ? "text-green-400" : "text-gray-300"}`}>
                                                     {match.user2Score}
                                                 </span>
-                                            </div>
-                                        </div>
+                    </div>
+                </div>
                                         <div className="text-gray-400 text-sm font-['VT323']">
                                             {match.timestamp}
-                                        </div>
-                                    </div>
+                                </div>
+                                </div>
                                 ))}
                             </div>
                         </div>
-
-                        {/* Matchmaking Section */}
+                        
+                        {/* Matchmaking Section with Cover Image */}
                         <div className="bg-slate-800 rounded-lg shadow-md p-6">
-                            <h2 className="text-2xl font-bold mb-6 text-blue-300 font-['VT323']">Find a Match</h2>
-
+                            <div className="relative w-full h-32 mb-6 rounded-lg overflow-hidden">
+                                <Image
+                                    src={coverImage}
+                                    alt="Developer Aura Battle"
+                                    layout="fill"
+                                    objectFit="cover"
+                                    className="rounded-lg"
+                                />
+                                <div className="absolute inset-0 bg-gradient-to-r from-slate-900/80 to-transparent flex items-center">
+                                    <h2 className="text-2xl font-bold text-blue-300 font-['VT323'] pl-6">Find a Match</h2>
+                        </div>
+                        </div>
+                        
                             <div className="grid grid-cols-1 gap-6">
                                 {/* Online Users */}
                                 <div className="bg-slate-900 rounded-lg p-4">
@@ -853,25 +903,34 @@ export default function RankedAura() {
                                         <div className="flex items-center">
                                             <div className="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
                                             <span className="text-2xl text-green-400 font-['VT323']">{onlineUsers}</span>
-                                        </div>
-                                    </div>
-                                </div>
+                        </div>
+                    </div>
+                </div>
 
                                 {/* Match Settings */}
                                 <div className="space-y-4">
-                                    {/* Match Duration */}
+                                    {/* Match Duration - Dropdown */}
                                     <div>
                                         <label className="block mb-2 text-gray-300 font-['VT323']">
-                                            Match Duration: {matchDuration} minutes
+                                            Match Duration
                                         </label>
-                                        <input
-                                            type="range"
-                                            min="2"
-                                            max="30"
+                                        <select
                                             value={matchDuration}
                                             onChange={(e) => setMatchDuration(parseInt(e.target.value))}
-                                            className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer"
-                                        />
+                                            className="w-full p-3 bg-slate-900 text-gray-200 rounded-lg appearance-none cursor-pointer border border-slate-700 font-['VT323'] text-lg"
+                                            style={{ 
+                                                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236B7280'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
+                                                backgroundRepeat: 'no-repeat',
+                                                backgroundPosition: 'right 1rem center',
+                                                backgroundSize: '1.5em 1.5em',
+                                                paddingRight: '3rem'
+                                            }}
+                                        >
+                                            <option value="10">10 Minutes</option>
+                                            <option value="30">30 Minutes</option>
+                                            <option value="60">1 Hour</option>
+                                            <option value="120">2 Hours</option>
+                                        </select>
                                     </div>
 
                                     {/* Capture Interval */}
@@ -887,8 +946,8 @@ export default function RankedAura() {
                                             onChange={(e) => setCaptureInterval(parseInt(e.target.value))}
                                             className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer"
                                         />
-                                    </div>
-                                </div>
+                            </div>
+                        </div>
 
                                 {/* Find Match Button */}
                                 <button
@@ -899,23 +958,23 @@ export default function RankedAura() {
                                         ? `Searching for opponent... (${formatSearchTime(searchTime)})`
                                         : "Find an Opponent"}
                                 </button>
-                            </div>
                         </div>
                     </div>
-                )}
-
+                </div>
+            )}
+            
                 {/* Match Found but not started */}
                 {matchFound && !matchStarted && (
                     <div className="bg-slate-800 rounded-lg shadow-md p-8 max-w-4xl mx-auto">
                         <div className="text-center mb-8">
                             <h2 className="text-3xl font-bold text-blue-300 mb-2 font-['VT323']">
                                 Match Found!
-                            </h2>
+                        </h2>
                             <p className="text-xl text-gray-300 font-['VT323']">
-                                You've been matched with <span className="text-blue-300 font-semibold">{enemyName}</span>
+                                You&apos;ve been matched with <span className="text-blue-300 font-semibold">{enemyName}</span>
                             </p>
                         </div>
-
+                        
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
                             {/* User Side */}
                             <div className="bg-slate-900 rounded-lg p-6 border-2 border-blue-700">
@@ -936,17 +995,17 @@ export default function RankedAura() {
                                                     className="w-full h-full object-cover"
                                                 ></video>
                                             ) : (
-                                                <div className="absolute inset-0 flex items-center justify-center">
+                                <div className="absolute inset-0 flex items-center justify-center">
                                                     <button
                                                         onClick={requestWebcam}
                                                         className="px-4 py-2 bg-blue-700 text-white rounded-lg hover:bg-blue-600 transition-colors font-['VT323']"
                                                     >
                                                         Enable Webcam
                                                     </button>
-                                                </div>
+                                </div>
                                             )}
-                                        </div>
-
+                        </div>
+                        
                                         {/* Screen */}
                                         <div className="relative bg-slate-950 rounded-lg overflow-hidden aspect-video">
                                             {screenPermission ? (
@@ -959,19 +1018,19 @@ export default function RankedAura() {
                                                 ></video>
                                             ) : (
                                                 <div className="absolute inset-0 flex items-center justify-center">
-                                                    <button
+                        <button 
                                                         onClick={requestScreen}
                                                         className="px-4 py-2 bg-blue-700 text-white rounded-lg hover:bg-blue-600 transition-colors font-['VT323']"
                                                     >
                                                         Share Screen
-                                                    </button>
-                                                </div>
-                                            )}
-                                        </div>
+                        </button>
+                </div>
+            )}
+                            </div>
                                     </div>
 
                                     {/* Ready Button */}
-                                    <button
+                            <button
                                         onClick={handleReadyClick}
                                         disabled={!webcamPermission || !screenPermission || userReady}
                                         className={`w-full py-3 rounded-lg text-xl font-['VT323'] ${
@@ -983,9 +1042,9 @@ export default function RankedAura() {
                                         }`}
                                     >
                                         {userReady ? "Ready!" : "Ready Up"}
-                                    </button>
-                                </div>
-                            </div>
+                            </button>
+                </div>
+            </div>
 
                             {/* Enemy Side */}
                             <div className="bg-slate-900 rounded-lg p-6">
@@ -1001,11 +1060,11 @@ export default function RankedAura() {
                                                 <div className="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
                                                 <span className="text-green-400 font-['VT323']">
                                                     Webcam Enabled
-                                                </span>
+                                        </span>
+                                    </div>
                                             </div>
                                         </div>
-                                    </div>
-
+                                        
                                     {/* Fake Screen */}
                                     <div className="relative bg-slate-950 rounded-lg overflow-hidden aspect-video">
                                         <div className="absolute inset-0 flex items-center justify-center">
@@ -1014,25 +1073,25 @@ export default function RankedAura() {
                                                 <span className="text-green-400 font-['VT323']">
                                                     Screen Shared
                                                 </span>
+                                        </div>
                                             </div>
                                         </div>
-                                    </div>
 
                                     {/* Ready Status */}
                                     <div className="w-full py-3 bg-green-600 text-white rounded-lg text-center text-xl font-['VT323']">
                                         Ready!
                                     </div>
                                 </div>
-                            </div>
                         </div>
+                    </div>
 
                         {/* Match Info */}
                         <div className="bg-slate-900 rounded-lg p-4 text-center">
                             <p className="text-lg text-gray-300 font-['VT323']">
                                 Match Duration: {matchDuration} minutes &bull; Interval: {captureInterval} seconds
                             </p>
-                        </div>
-                    </div>
+                            </div>
+                            </div>
                 )}
 
                 {/* Match Started - Full Match Interface */}
@@ -1057,42 +1116,53 @@ export default function RankedAura() {
                             {/* User Side */}
                             <div className="space-y-6">
                                 <div className="bg-slate-900 rounded-lg p-4">
-                                    <h3 className="text-xl font-bold text-center mb-2 text-blue-300 font-['VT323']">
+                                    <h3 className="text-xl font-bold text-center mb-2 text-blue-300 font-[VT323]">
                                         Your Aura: {userAuraScore}
                                     </h3>
+
+                                    <div className="text-center mb-3 flex flex-col items-center">
+                                        <div className="relative w-20 h-20 mb-2">
+                                            <Image
+                                                src={getUserAuraEmote(userAuraScore, userScoreHistory)}
+                                                alt="Your Aura"
+                                                layout="fill"
+                                                objectFit="contain"
+                                            />
+                                        </div>
+                                        <div className="text-6xl font-bold font-[VT323]" style={{ color: getUserAuraColor() }}>
+                                                {userAuraScore}
+                                            </div>
+                                        <span className="text-lg font-[VT323]" style={{ color: getUserAuraColor() }}>
+                                            {getUserAuraLevel()}
+                                        </span>
+                                </div>
 
                                     <div className="w-full bg-slate-950 h-4 rounded-full overflow-hidden">
                                         <div
                                             className="h-full transition-all duration-500 ease-out"
                                             style={{
                                                 width: `${Math.min(userAuraScore, 100)}%`,
-                                                backgroundColor: getUserAuraColor(),
+                                                backgroundColor: getUserAuraColor()
                                             }}
                                         ></div>
-                                    </div>
-
-                                    <div className="mt-2 text-center">
-                                        <span className="text-lg font-['VT323']" style={{ color: getUserAuraColor() }}>
-                                            {getUserAuraLevel()}
-                                        </span>
-                                    </div>
-                                </div>
-
+                                            </div>
+                                        </div>
+                                
                                 {/* User Webcam */}
                                 <div className="relative bg-slate-950 rounded-lg overflow-hidden aspect-video">
                                     {webcamStreamRef.current ? (
-                                        <video
-                                            ref={videoRef}
-                                            autoPlay
-                                            playsInline
-                                            muted
+                                        <video 
+                                            ref={videoRef} 
+                                            autoPlay 
+                                            playsInline 
+                                            muted 
                                             className="w-full h-full object-cover"
                                             style={{transform: "scaleX(-1)"}} // Mirror webcam for natural viewing
                                         ></video>
                                     ) : (
                                         <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/80">
                                             <div className="text-red-400 text-xl font-['VT323'] mb-2">Webcam disconnected</div>
-                                            <button
+                                            <button 
                                                 onClick={requestWebcam}
                                                 className="px-4 py-2 bg-blue-700 text-white rounded-lg hover:bg-blue-600 transition-colors font-['VT323']"
                                             >
@@ -1102,7 +1172,7 @@ export default function RankedAura() {
                                     )}
                                     <div className="absolute top-2 left-2 bg-slate-900/70 px-2 py-1 rounded text-xs text-blue-300">
                                         Your Webcam
-                                    </div>
+                                </div>
                                     <div className="absolute bottom-2 right-2 bg-slate-900/70 px-2 py-1 rounded text-xs text-gray-300">
                                         Images Sent: {imagesSent}
                                     </div>
@@ -1111,17 +1181,17 @@ export default function RankedAura() {
                                 {/* User Screen */}
                                 <div className="relative bg-slate-950 rounded-lg overflow-hidden aspect-video">
                                     {screenStreamRef.current ? (
-                                        <video
-                                            ref={screenRef}
-                                            autoPlay
-                                            playsInline
-                                            muted
+                                        <video 
+                                            ref={screenRef} 
+                                            autoPlay 
+                                            playsInline 
+                                            muted 
                                             className="w-full h-full object-cover"
                                         ></video>
                                     ) : (
                                         <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/80">
                                             <div className="text-red-400 text-xl font-['VT323'] mb-2">Screen disconnected</div>
-                                            <button
+                                            <button 
                                                 onClick={requestScreen}
                                                 className="px-4 py-2 bg-blue-700 text-white rounded-lg hover:bg-blue-600 transition-colors font-['VT323']"
                                             >
@@ -1133,7 +1203,7 @@ export default function RankedAura() {
                                         Your Screen
                                     </div>
                                 </div>
-
+                                
                                 {/* User History */}
                                 <div className="bg-slate-900 rounded-lg p-4">
                                     <h3 className="text-lg font-bold mb-2 text-blue-300 font-['VT323']">
@@ -1168,24 +1238,35 @@ export default function RankedAura() {
                             {/* Enemy Side */}
                             <div className="space-y-6">
                                 <div className="bg-slate-900 rounded-lg p-4">
-                                    <h3 className="text-xl font-bold text-center mb-2 text-blue-300 font-['VT323']">
-                                        {enemyName}'s Aura: {enemyAuraScore}
+                                    <h3 className="text-xl font-bold text-center mb-2 text-blue-300 font-[VT323]">
+                                        {enemyName}&apos;s Aura: {enemyAuraScore}
                                     </h3>
+
+                                    <div className="text-center mb-3 flex flex-col items-center">
+                                        <div className="relative w-20 h-20 mb-2">
+                                            <Image
+                                                src={getEnemyAuraEmote(enemyAuraScore, enemyScoreHistory)}
+                                                alt="Enemy Aura"
+                                                layout="fill"
+                                                objectFit="contain"
+                                            />
+                                        </div>
+                                        <div className="text-6xl font-bold font-[VT323]" style={{ color: getEnemyAuraColor() }}>
+                                            {enemyAuraScore}
+                                        </div>
+                                        <span className="text-lg font-[VT323]" style={{ color: getEnemyAuraColor() }}>
+                                            {getEnemyAuraLevel()}
+                                                            </span>
+                                                        </div>
 
                                     <div className="w-full bg-slate-950 h-4 rounded-full overflow-hidden">
                                         <div
                                             className="h-full transition-all duration-500 ease-out"
                                             style={{
                                                 width: `${Math.min(enemyAuraScore, 100)}%`,
-                                                backgroundColor: getEnemyAuraColor(),
+                                                backgroundColor: getEnemyAuraColor()
                                             }}
                                         ></div>
-                                    </div>
-
-                                    <div className="mt-2 text-center">
-                                        <span className="text-lg font-['VT323']" style={{ color: getEnemyAuraColor() }}>
-                                            {getEnemyAuraLevel()}
-                                        </span>
                                     </div>
                                 </div>
 
@@ -1193,8 +1274,8 @@ export default function RankedAura() {
                                 <div className="relative bg-slate-950 rounded-lg overflow-hidden aspect-video">
                                     <div className="absolute inset-0 flex items-center justify-center">
                                         <div className="bg-slate-800/70 px-4 py-2 rounded-lg text-center">
-                                            <div className="text-blue-300 text-lg font-['VT323']">
-                                                {enemyName}'s Webcam
+                                            <div className="text-blue-300 text-lg font-[VT323]">
+                                                {enemyName}&apos;s Webcam
                                             </div>
                                             <div className="text-gray-400 text-sm font-['VT323']">
                                                 Privacy protected
@@ -1207,8 +1288,8 @@ export default function RankedAura() {
                                 <div className="relative bg-slate-950 rounded-lg overflow-hidden aspect-video">
                                     <div className="absolute inset-0 flex items-center justify-center">
                                         <div className="bg-slate-800/70 px-4 py-2 rounded-lg text-center">
-                                            <div className="text-blue-300 text-lg font-['VT323']">
-                                                {enemyName}'s Screen
+                                            <div className="text-blue-300 text-lg font-[VT323]">
+                                                {enemyName}&apos;s Screen
                                             </div>
                                             <div className="text-gray-400 text-sm font-['VT323']">
                                                 Privacy protected
@@ -1220,7 +1301,7 @@ export default function RankedAura() {
                                 {/* Enemy History */}
                                 <div className="bg-slate-900 rounded-lg p-4">
                                     <h3 className="text-lg font-bold mb-2 text-blue-300 font-['VT323']">
-                                        {enemyName}'s Aura Changes
+                                        {enemyName}&apos;s Aura Changes
                                     </h3>
                                     <div className="space-y-2 max-h-40 overflow-y-auto pr-2">
                                         {enemyScoreHistory.length > 0 ? (
@@ -1236,20 +1317,20 @@ export default function RankedAura() {
                                                         {item.change > 0
                                                             ? `+${item.change}`
                                                             : item.change}
-                                                    </span>
+                                                        </span>
                                                     <span className="text-gray-300 flex-1">{item.reason}</span>
                                                     <span className="text-gray-400 text-xs">{item.timestamp}</span>
-                                                </div>
-                                            ))
-                                        ) : (
+                                                    </div>
+                                                ))
+                                            ) : (
                                             <div className="text-gray-400 text-center">No changes yet</div>
-                                        )}
+                                            )}
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    </div>
-                )}
+                                        </div>
+                                    </div>
+                                )}
 
                 {/* Search Modal */}
                 {showSearchModal && (
@@ -1259,7 +1340,7 @@ export default function RankedAura() {
                             <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg blur opacity-30 animate-pulse"></div>
                             
                             <div className="relative">
-                                <h2 className="text-3xl font-bold mb-6 text-center text-blue-400 font-['VT323']">
+                                <h2 className="text-3xl font-bold mb-6 text-center text-blue-400 font-[VT323]">
                                     Searching for Opponent
                                 </h2>
                                 
@@ -1272,9 +1353,9 @@ export default function RankedAura() {
                                         
                                         {/* Developer icon */}
                                         <div className="text-blue-300 text-4xl z-10">👨‍💻</div>
-                                    </div>
-                                </div>
-                                
+                            </div>
+                        </div>
+                        
                                 {/* Searching animation dots */}
                                 <p className="text-center text-gray-300 mb-4 font-['VT323'] text-2xl flex items-center justify-center">
                                     Searching
@@ -1289,8 +1370,8 @@ export default function RankedAura() {
                                     <div className="text-2xl text-blue-300 font-['Press_Start_2P'] tracking-wider">
                                         {formatSearchTime(searchTime)}
                                     </div>
-                                </div>
-
+                            </div>
+                            
                                 {/* Status messages */}
                                 <div className="space-y-2 mb-6">
                                     <div className="flex items-center text-gray-300 font-['VT323']">
@@ -1300,17 +1381,17 @@ export default function RankedAura() {
                                     <div className="flex items-center text-gray-300 font-['VT323']">
                                         <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
                                         <span>Analyzing aura compatibility...</span>
-                                    </div>
+                                        </div>
                                     <div className="flex items-center text-gray-300 font-['VT323']">
                                         <div className="w-2 h-2 bg-blue-500 animate-pulse rounded-full mr-2"></div>
                                         <span>Establishing connection...</span>
                                     </div>
                                 </div>
-
+                                
                                 {/* Online users indicator */}
                                 <div className="text-center text-gray-400 font-['VT323'] mb-6">
                                     <span className="text-green-400">{onlineUsers}</span> developers currently online
-                                </div>
+                                    </div>
                                 
                                 <button
                                     onClick={() => {
@@ -1323,30 +1404,47 @@ export default function RankedAura() {
                                     <span className="relative z-10">Cancel Search</span>
                                     <div className="absolute inset-0 bg-gradient-to-r from-red-800 to-red-600 transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left"></div>
                                 </button>
-                            </div>
-                        </div>
-                    </div>
+                                        </div>
+                                    </div>
+                                </div>
                 )}
 
                 {/* Countdown Modal */}
                 {showCountdownModal && (
                     <div className="fixed inset-0 flex items-center justify-center bg-black/70 z-50">
-                        <div className="bg-slate-800 rounded-lg p-8">
-                            <div className="text-center">
-                                <h2 className="text-4xl font-bold mb-8 text-blue-300 font-['VT323']">
+                        <div className="bg-slate-800 rounded-lg p-12 shadow-[0_0_50px_rgba(59,130,246,0.3)] border border-blue-500/30 relative">
+                            <div className="text-center relative z-10">
+                                <h2 className="text-4xl font-bold mb-6 text-blue-300 font-['VT323']">
                                     Match Starting in
                                 </h2>
-                                <div className="text-8xl font-bold text-white mb-8 font-['Press_Start_2P']">
-                                    {countdownValue}
+                                <div className="relative mb-4 flex flex-col items-center">
+                                    <div className="relative w-24 h-24 mb-2">
+                                        <Image
+                                            src={countdownValue === 3 ? tiredEmote : 
+                                                 countdownValue === 2 ? indifferentEmote : 
+                                                 competitiveEmote}
+                                            alt="Countdown"
+                                            layout="fill"
+                                            objectFit="contain"
+                                        />
+                                    </div>
+                                    <div className="text-9xl font-bold text-white mb-2 font-['Press_Start_2P'] relative"
+                                         style={{
+                                            color: countdownValue === 3 ? "#ef4444" : 
+                                                   countdownValue === 2 ? "#eab308" : 
+                                                   "#22c55e"
+                                         }}>
+                                        {countdownValue}
+                                    </div>
                                 </div>
                                 <p className="text-xl text-gray-300 font-['VT323']">
                                     Prepare for the aura battle!
                                 </p>
                             </div>
                         </div>
-                    </div>
-                )}
-
+                                    </div>
+                                )}
+                                
                 {/* Results Modal */}
                 {showResultModal && (
                     <div className="fixed inset-0 flex items-center justify-center bg-black/70 z-50">
@@ -1358,12 +1456,28 @@ export default function RankedAura() {
                             <div className="grid grid-cols-2 gap-6 mb-8">
                                 <div className="text-center">
                                     <div className="text-xl text-gray-300 font-['VT323']">Your Score</div>
+                                    <div className="relative w-16 h-16 mx-auto my-2">
+                                        <Image
+                                            src={getUserAuraEmote(userAuraScore, userScoreHistory)}
+                                            alt="Your Aura"
+                                            layout="fill"
+                                            objectFit="contain"
+                                        />
+                                                        </div>
                                     <div className="text-4xl font-bold font-['VT323']" style={{ color: getUserAuraColor() }}>
                                         {userAuraScore}
-                                    </div>
-                                </div>
+                                                    </div>
+                                        </div>
                                 <div className="text-center">
-                                    <div className="text-xl text-gray-300 font-['VT323']">{enemyName}'s Score</div>
+                                    <div className="text-xl text-gray-300 font-['VT323']">{enemyName}&apos;s Score</div>
+                                    <div className="relative w-16 h-16 mx-auto my-2">
+                                        <Image
+                                            src={getEnemyAuraEmote(enemyAuraScore, enemyScoreHistory)}
+                                            alt="Enemy Aura"
+                                            layout="fill"
+                                            objectFit="contain"
+                                        />
+                                    </div>
                                     <div className="text-4xl font-bold font-['VT323']" style={{ color: getEnemyAuraColor() }}>
                                         {enemyAuraScore}
                                     </div>
@@ -1378,8 +1492,8 @@ export default function RankedAura() {
                                         <span className="text-red-400">Defeat!</span>
                                     ) : (
                                         <span className="text-yellow-400">Draw!</span>
-                                    )}
-                                </div>
+                                )}
+                            </div>
                                 <p className="text-gray-300 font-['VT323']">
                                     {userAuraScore > enemyAuraScore
                                         ? "Your developer aura outshined your opponent!"
@@ -1387,7 +1501,7 @@ export default function RankedAura() {
                                         ? "Your opponent's aura was stronger this time."
                                         : "Both of you have equally powerful auras!"}
                                 </p>
-                            </div>
+                        </div>
 
                             <button
                                 onClick={resetMatch}
@@ -1395,9 +1509,9 @@ export default function RankedAura() {
                             >
                                 Return to Lobby
                             </button>
-                        </div>
                     </div>
-                )}
+                </div>
+            )}
 
                 {/* Stop Match Confirmation Modal */}
                 {showStopMatchModal && (
@@ -1424,8 +1538,8 @@ export default function RankedAura() {
                                 </button>
                             </div>
                         </div>
-                    </div>
-                )}
+                </div>
+            )}
 
                 {/* Hidden canvas elements */}
                 <canvas ref={webcamCanvasRef} style={{ display: "none" }}></canvas>
