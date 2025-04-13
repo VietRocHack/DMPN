@@ -816,7 +816,7 @@ export default function Dashboard() {
                                     {webcamPermission === null ? (
                                         <button
                                             onClick={requestWebcam}
-                                            className="px-6 py-3 bg-blue-700 text-white rounded-lg hover:bg-blue-600 transition-colors font-['VT323'] text-xl"
+                                            className="px-6 py-3 bg-blue-700 text-white rounded-lg hover:bg-blue-600 transition-all duration-300 transform hover:scale-105 hover:shadow-[0_0_15px_rgba(59,130,246,0.5)] font-['VT323'] text-xl"
                                         >
                                             Enable Webcam
                                         </button>
@@ -853,7 +853,7 @@ export default function Dashboard() {
                                     {screenPermission === null ? (
                                         <button
                                             onClick={requestScreen}
-                                            className="px-6 py-3 bg-blue-700 text-white rounded-lg hover:bg-blue-600 transition-colors font-['VT323'] text-xl"
+                                            className="px-6 py-3 bg-blue-700 text-white rounded-lg hover:bg-blue-600 transition-all duration-300 transform hover:scale-105 hover:shadow-[0_0_15px_rgba(59,130,246,0.5)] font-['VT323'] text-xl"
                                         >
                                             Share Screen
                                         </button>
@@ -892,26 +892,27 @@ export default function Dashboard() {
                                 <button
                                     onClick={isCapturing ? stopCapturing : startCapturing}
                                     disabled={!webcamPermission || !screenPermission}
-                                    className={`w-full px-6 py-4 text-xl rounded-lg font-['VT323'] transition-colors flex items-center justify-center gap-2 ${
+                                    className={`w-full px-6 py-4 text-xl rounded-lg font-['VT323'] transition-all duration-300 flex items-center justify-center gap-2 
+                                        ${
                                         isCapturing
-                                            ? "bg-red-600 hover:bg-red-700 text-white"
-                                            : "bg-blue-700 hover:bg-blue-600 text-white"
+                                            ? "bg-red-600 hover:bg-red-700 text-white hover:shadow-[0_0_15px_rgba(239,68,68,0.5)] hover:scale-[1.02]"
+                                            : "bg-blue-700 hover:bg-blue-600 text-white hover:shadow-[0_0_15px_rgba(59,130,246,0.5)] hover:scale-[1.02]"
                                     } ${
                                         !webcamPermission || !screenPermission
                                             ? "opacity-50 cursor-not-allowed"
-                                            : ""
+                                            : "cursor-pointer"
                                     }`}
                                 >
                                     {isCapturing ? (
                                         <>
-                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 transition-transform group-hover:scale-110" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                             </svg>
                                             Stop Aura Capture
                                         </>
                                     ) : (
                                         <>
-                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 transition-transform group-hover:scale-110" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                             </svg>
@@ -1038,14 +1039,14 @@ export default function Dashboard() {
                                         <span className="text-gray-300 font-['VT323'] mr-2">
                                             {useRealApi ? 'Real' : 'Mock'}
                                         </span>
-                                        <label className="relative inline-flex items-center cursor-pointer">
+                                        <label className="relative inline-flex items-center cursor-pointer group">
                                             <input
                                                 type="checkbox"
                                                 checked={useRealApi}
                                                 onChange={() => setUseRealApi(!useRealApi)}
                                                 className="sr-only peer"
                                             />
-                                            <div className="w-11 h-6 bg-slate-700 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                            <div className="w-11 h-6 bg-slate-700 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600 hover:after:scale-110 hover:ring-1 hover:ring-blue-300 transition-all duration-300"></div>
                                         </label>
                                     </div>
                                 </div>
@@ -1122,9 +1123,10 @@ export default function Dashboard() {
                             </p>
                             <Link 
                                 href="/ranked" 
-                                className="inline-block px-6 py-3 bg-gradient-to-r from-purple-700 to-pink-700 text-white rounded-lg hover:from-purple-600 hover:to-pink-600 transition-colors font-['VT323'] text-xl"
+                                className="inline-block px-6 py-3 bg-gradient-to-r from-purple-700 to-pink-700 text-white rounded-lg hover:from-purple-600 hover:to-pink-600 transition-all duration-300 transform hover:scale-105 hover:shadow-[0_0_20px_rgba(168,85,247,0.5)] font-['VT323'] text-xl relative overflow-hidden group"
                             >
-                                Try Ranked Aura Battles 🏆
+                                <span className="relative z-10">Try Ranked Aura Battles 🏆</span>
+                                <span className="absolute inset-0 bg-gradient-to-r from-purple-500 to-pink-500 transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-300"></span>
                             </Link>
                         </div>
                     </div>
@@ -1157,6 +1159,12 @@ export default function Dashboard() {
                             </div>
                         </div>
                     </div>
+                    <button
+                        onClick={() => setShowPopup(false)}
+                        className="w-full py-3 bg-blue-700 text-white rounded-lg hover:bg-blue-600 transition-all duration-300 transform hover:scale-105 hover:shadow-[0_0_15px_rgba(59,130,246,0.5)] font-['VT323']"
+                    >
+                        Understand
+                    </button>
                 </div>
             )}
         </div>

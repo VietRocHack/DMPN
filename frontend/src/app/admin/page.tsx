@@ -294,7 +294,7 @@ export default function AdminDashboard() {
                     explanation[Math.floor(Math.random() * explanation.length)];
 
                 // Create a mock image (would be base64 from server)
-                const mockImage = `data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQwIiBoZWlnaHQ9IjQ4MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjMzMzIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIyNCIgZmlsbD0id2hpdGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJtaWRkbGUiPlVzZXIgU25hcHNob3Q8L3RleHQ+PC9zdmc+`;
+                const mockImage = `data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQwIiBoZWlnaHQ9IjQ4MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjMzMzIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIyNCIgZmlsbD0id2hpdGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJtaWRkbGUiPkltYWdlIEVycm9yPC90ZXh0Pjwvc3ZnPg==`;
 
                 // Create the message
                 const newMessage: AuraMessage = {
@@ -393,7 +393,7 @@ export default function AdminDashboard() {
                                     onClick={() => {
                                         socketRef.current?.connect();
                                     }}
-                                    className="px-3 py-1 bg-blue-700 text-white rounded hover:bg-blue-600 transition-colors"
+                                    className="px-3 py-1 bg-blue-700 text-white rounded hover:bg-blue-600 transition-all duration-300 transform hover:scale-105 hover:shadow-[0_0_10px_rgba(59,130,246,0.5)]"
                                     disabled={connected}
                                 >
                                     Reconnect
@@ -416,8 +416,8 @@ export default function AdminDashboard() {
                                 checked={useRealApi}
                                 onChange={() => setUseRealApi(!useRealApi)}
                             />
-                            <div className="w-11 h-6 bg-slate-700 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                            <span className="ml-3 text-gray-300">
+                            <div className="w-11 h-6 bg-slate-700 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600 hover:after:scale-110 hover:ring-1 hover:ring-blue-300 transition-all duration-300"></div>
+                            <span className="ml-3 text-gray-300 group-hover:text-blue-300 transition-colors duration-300">
                                 {useRealApi ? "Real-time Data" : "Mock Data"}
                             </span>
                         </label>
@@ -609,10 +609,10 @@ export default function AdminDashboard() {
                                     key={index}
                                     className={`p-4 rounded-lg ${
                                         index % 2 === 0 ? "bg-slate-700" : "bg-slate-900"
-                                    }`}
+                                    } cursor-pointer hover:bg-opacity-80 hover:transform hover:scale-[1.01] transition-all duration-300 hover:shadow-[0_0_10px_rgba(59,130,246,0.2)] group`}
                                 >
                                     <div className="flex items-start">
-                                        <div className="flex-shrink-0 mr-3 relative w-6 h-6">
+                                        <div className="flex-shrink-0 mr-3 relative w-6 h-6 transition-transform duration-300 group-hover:scale-125">
                                             <Image
                                                 src={index % 5 === 0 ? laughEmote : 
                                                      index % 4 === 0 ? competitiveEmote : 
@@ -624,7 +624,7 @@ export default function AdminDashboard() {
                                                 objectFit="contain"
                                             />
                                         </div>
-                                        <p className="text-gray-300 font-['VT323'] text-lg">{tip}</p>
+                                        <p className="text-gray-300 font-['VT323'] text-lg group-hover:text-blue-300 transition-colors duration-300">{tip}</p>
                                     </div>
                                 </div>
                             ))}

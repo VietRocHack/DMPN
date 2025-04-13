@@ -37,13 +37,13 @@ export default function Home() {
                         href="/dashboard"
                         className="px-8 py-4 bg-blue-700 text-white rounded-full text-xl font-bold hover:bg-blue-600 transition-all transform hover:scale-105 font-['VT323']"
                     >
-                        Start Your Journey →
+                        Aura Calibration Studio
                     </Link>
                     <Link
                         href="/admin"
                         className="px-8 py-4 bg-slate-700 text-gray-200 rounded-full text-xl font-bold hover:bg-slate-600 transition-all transform hover:scale-105 font-['VT323']"
                     >
-                        Admin Dashboard
+                        Aura Observatory
                     </Link>
                 </div>
                 <Link 

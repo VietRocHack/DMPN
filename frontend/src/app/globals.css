@@ -136,11 +136,53 @@ body {
 
 @layer utilities {
   /* Add your custom utilities here */
+  .animation-delay-150 {
+    animation-delay: 150ms;
+  }
   .animation-delay-300 {
     animation-delay: 300ms;
   }
   .animation-delay-600 {
     animation-delay: 600ms;
+  }
+  
+  /* Button hover animations */
+  .btn-glow {
+    @apply transition-all duration-300 hover:shadow-[0_0_15px_rgba(59,130,246,0.5)];
+  }
+  
+  .btn-scale {
+    @apply transition-all duration-300 transform hover:scale-105;
+  }
+  
+  .btn-slide-bg {
+    @apply relative overflow-hidden;
+  }
+  
+  .btn-slide-bg span {
+    @apply relative z-10;
+  }
+  
+  .btn-slide-bg::after {
+    content: '';
+    @apply absolute inset-0 transform scale-x-0 bg-white/30 transition-transform duration-300 origin-left;
+  }
+  
+  .btn-slide-bg:hover::after {
+    @apply scale-x-100;
+  }
+  
+  /* Interactive element effects */
+  .hover-float {
+    @apply transition-transform duration-500 ease-in-out hover:translate-y-[-5px];
+  }
+  
+  .hover-rotate {
+    @apply transition-transform duration-300 hover:rotate-3;
+  }
+  
+  .hover-bright {
+    @apply transition-all duration-300 hover:brightness-125;
   }
 }
 

@@ -22,12 +22,13 @@ As the Frontend, we need to create a homepage, a screen for the user to record s
 Screens for the Frontend needed:
 
  - Homepage
-Simple no-scroll landing page with the name, a sentence that shows what we do, and a centered button that redirect to the User Dashboard Page.
+Simple no-scroll landing page with the name, a sentence that shows what we do, and a centered button that redirect to the Aura Calibration Studio Page.
 
- - User Dashboard Page:
-The User Dashboard page ask for permission to use the webcam and the camera; follows the permissions with appropriate dialog, and after the user accepts and share both of the data, you show those data on the dashboard. When both of the data is shared, at routine intervals (default 5s, can be adjusted), send the images as a POST request to an API endpoint (the endpoint is not specified for now). Show a popup whenever images are sent.
 
- - Admin Dashboard Page:
+ - Aura Calibration Studio (User Dashboard Page):
+The Aura Calibration Studio page ask for permission to use the webcam and the camera; follows the permissions with appropriate dialog, and after the user accepts and share both of the data, you show those data on the dashboard. When both of the data is shared, at routine intervals (default 5s, can be adjusted), send the images as a POST request to an API endpoint (the endpoint is not specified for now). Show a popup whenever images are sent.
+
+ - Aura Observatory (Admin Dashboard Page):
   + This page is connected by WebSockets to a backend server. At random intervals, you will recieve a message from the server with an image, a number that shows the change in aura points, and explanation for the aura point change.
   + This page should look like a dashboard, with a "image-pointchange-explanation" timeline on the left, centralized and heavily styled point count in the middle, and some "tips" for increasing points on the right (don't be distracted, write well-designed code, don't go to Instagram,...)
 
