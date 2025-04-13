@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import Link from "next/link";
 
 // Fake data for recent matches
 const RECENT_MATCHES = [
@@ -70,7 +69,6 @@ export default function RankedAura() {
     const [webcamImage, setWebcamImage] = useState<string | null>(null);
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [screenImage, setScreenImage] = useState<string | null>(null);
-    const [apiMessage, setApiMessage] = useState<string | null>(null);
 
     // Request webcam permission with improved initialization
     const requestWebcam = async () => {
@@ -314,8 +312,6 @@ export default function RankedAura() {
 
         if (API_CONFIG.USE_REAL_API) {
             try {
-                setApiMessage("Analyzing aura...");
-
                 // Validate base64 data before sending
                 if (!webcamBase64 || !screenBase64) {
                     throw new Error("Failed to extract base64 data from images");
@@ -373,14 +369,10 @@ export default function RankedAura() {
                     setUserAuraScore(newScore);
                 }
                 
-                setApiMessage(null);
-                
                 // Also update enemy with random data
                 updateEnemyAuraScore();
             } catch (error) {
                 console.error("Error sending data to backend:", error);
-                setApiMessage(`Error: ${error instanceof Error ? error.message : "Unknown error"}`);
-                setTimeout(() => setApiMessage(null), 3000);
                 
                 // Fallback to random updates when API fails
                 updateUserAuraScoreRandom();
@@ -639,58 +631,110 @@ export default function RankedAura() {
 
     // Handle ready button click
     const handleReadyClick = () => {
-        console.log("🎮 handleReadyClick called");
+        if (!webcamPermission || !screenPermission) {
+            return;
+        }
+        
+        // Mark user as ready
         setUserReady(true);
+        
+        // Log readiness to help with debugging
+        console.log("User ready! Checking stream readiness...");
+        console.log("WebcamStream:", webcamStreamRef.current ? "Available" : "Missing");
+        console.log("ScreenStream:", screenStreamRef.current ? "Available" : "Missing");
+        
+        // Verify video elements are ready
+        if (!videoRef.current?.srcObject || !screenRef.current?.srcObject) {
+            console.log("Video elements not set up properly, reconnecting streams...");
+            
+            // Reconnect webcam if needed
+            if (webcamStreamRef.current && videoRef.current) {
+                console.log("Reconnecting webcam stream");
+                videoRef.current.srcObject = webcamStreamRef.current;
+                videoRef.current.play().catch(err => console.error("Error playing webcam:", err));
+            }
+            
+            // Reconnect screen if needed
+            if (screenStreamRef.current && screenRef.current) {
+                console.log("Reconnecting screen stream");
+                screenRef.current.srcObject = screenStreamRef.current;
+                screenRef.current.play().catch(err => console.error("Error playing screen:", err));
+            }
+        }
+        
+        // Show countdown
         setShowCountdownModal(true);
         
         // Start countdown
-        setCountdownValue(3);
+        let count = 3;
+        setCountdownValue(count);
+        
         countdownTimerRef.current = setInterval(() => {
-            setCountdownValue((prev) => {
-                if (prev <= 1) {
-                    console.log("⏱️ Countdown finished, starting match");
-                    if (countdownTimerRef.current) {
-                        clearInterval(countdownTimerRef.current);
-                        countdownTimerRef.current = null;
-                    }
-                    setShowCountdownModal(false);
-                    setMatchStarted(true);
+            count--;
+            setCountdownValue(count);
+            
+            if (count <= 0) {
+                // Cleanup interval
+                if (countdownTimerRef.current) {
+                    clearInterval(countdownTimerRef.current);
+                    countdownTimerRef.current = null;
+                }
+                
+                // Hide countdown modal
+                setShowCountdownModal(false);
+                
+                // Start match
+                setMatchStarted(true);
+                
+                // Double check stream connections one more time
+                setTimeout(() => {
+                    console.log("Starting match, final stream check...");
                     
-                    // Start match timer
-                    const startTime = Date.now();
-                    const endTime = startTime + matchDuration * 60 * 1000;
-                    
-                    if (matchTimerRef.current) {
-                        clearInterval(matchTimerRef.current);
-                        matchTimerRef.current = null;
+                    // Force reconnect webcam stream
+                    if (webcamStreamRef.current && videoRef.current) {
+                        videoRef.current.srcObject = null;
+                        setTimeout(() => {
+                            if (videoRef.current && webcamStreamRef.current) {
+                                videoRef.current.srcObject = webcamStreamRef.current;
+                                videoRef.current.play().catch(err => console.error("Error starting webcam:", err));
+                            }
+                        }, 100);
                     }
+                    
+                    // Force reconnect screen stream
+                    if (screenStreamRef.current && screenRef.current) {
+                        screenRef.current.srcObject = null;
+                        setTimeout(() => {
+                            if (screenRef.current && screenStreamRef.current) {
+                                screenRef.current.srcObject = screenStreamRef.current;
+                                screenRef.current.play().catch(err => console.error("Error starting screen:", err));
+                            }
+                        }, 100);
+                    }
+                    
+                    // Set up round timer
+                    const matchDurationSecs = matchDuration * 60;
+                    setRoundTimer(matchDurationSecs);
                     
                     matchTimerRef.current = setInterval(() => {
-                        const remaining = Math.max(0, endTime - Date.now());
-                        setRoundTimer(Math.floor(remaining / 1000));
-                        
-                        if (remaining <= 0) {
-                            console.log("⏱️ Match timer finished, ending match");
-                            if (matchTimerRef.current) {
-                                clearInterval(matchTimerRef.current);
-                                matchTimerRef.current = null;
+                        setRoundTimer((prev) => {
+                            if (prev <= 1) {
+                                // Match is ending
+                                if (matchTimerRef.current) {
+                                    clearInterval(matchTimerRef.current);
+                                    matchTimerRef.current = null;
+                                }
+                                handleMatchEnd();
+                                return 0;
                             }
-                            // Handle match end
-                            handleMatchEnd();
-                        }
+                            return prev - 1;
+                        });
                     }, 1000);
                     
-                    // Reset image count before starting new session
-                    setImagesSent(0);
-                    
-                    // Start periodic aura score updates
-                    console.log("Starting aura updates");
+                    // Start aura capture process
                     startAuraUpdates();
-                    
-                    return 0;
-                }
-                return prev - 1;
-            });
+                }, 500);
+            }
         }, 1000);
     };
 
@@ -749,583 +793,644 @@ export default function RankedAura() {
     }, [captureInterval, matchStarted]);
 
     return (
-        <main className="min-h-screen flex flex-col bg-gradient-to-br from-purple-600 to-blue-500 p-6">
-            {/* Hidden canvas elements for capturing */}
-            <canvas ref={webcamCanvasRef} style={{ display: 'none' }}></canvas>
-            <canvas ref={screenCanvasRef} style={{ display: 'none' }}></canvas>
-            
-            {/* API Message notification */}
-            {apiMessage && (
-                <div className="fixed top-4 right-4 bg-gray-800 text-white p-3 rounded-lg shadow-lg z-50 font-['VT323']">
-                    {apiMessage}
-                </div>
-            )}
-            
-            {/* Stop Match Modal */}
-            {showStopMatchModal && (
-                <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/70">
-                    <div className="bg-gray-900 p-6 rounded-xl w-full max-w-md border border-red-500">
-                        <h2 className="text-2xl font-bold text-white text-center mb-6 font-['Press_Start_2P']">
-                            End Match?
-                        </h2>
-                        
-                        <p className="text-center text-white mb-6 font-['VT323'] text-xl">
-                            Are you sure you want to end this match early?
-                        </p>
-                        
-                        <div className="flex gap-4">
-                            <button 
-                                onClick={() => setShowStopMatchModal(false)}
-                                className="flex-1 py-3 bg-gray-700 text-white rounded-lg font-bold hover:bg-gray-600 transition-all font-['VT323']"
-                            >
-                                Cancel
-                            </button>
-                            <button 
-                                onClick={stopMatch}
-                                className="flex-1 py-3 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 transition-all font-['VT323']"
-                            >
-                                End Match
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-            
-            {/* Results Modal */}
-            {showResultModal && (
-                <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/90">
-                    <div className="bg-gray-900 p-8 rounded-xl w-full max-w-md border border-purple-500 shadow-2xl">
-                        <h2 className="text-3xl font-bold text-white text-center mb-6 font-['Press_Start_2P']">
-                            Match Results
-                        </h2>
-                        
-                        <div className="bg-gray-800/70 rounded-lg p-6 mb-6">
-                            <div className="flex justify-between items-center">
-                                <div className="text-center">
-                                    <p className="text-lg text-white/70 font-['VT323'] mb-1">You</p>
-                                    <p className={`text-4xl font-bold ${userAuraScore > enemyAuraScore ? 'text-green-400' : 'text-purple-400'} font-['Press_Start_2P']`}>
-                                        {userAuraScore}
-                                    </p>
-                                </div>
-                                
-                                <div className="text-2xl text-white font-['Press_Start_2P']">VS</div>
-                                
-                                <div className="text-center">
-                                    <p className="text-lg text-white/70 font-['VT323'] mb-1">{enemyName}</p>
-                                    <p className={`text-4xl font-bold ${enemyAuraScore > userAuraScore ? 'text-green-400' : 'text-blue-400'} font-['Press_Start_2P']`}>
-                                        {enemyAuraScore}
-                                    </p>
-                                </div>
+        <div className="min-h-[calc(100vh-64px)] bg-gradient-to-br from-slate-900 to-gray-800 text-gray-200 p-6">
+            <div className="max-w-7xl mx-auto">
+                {/* Page Header */}
+                <header className="mb-8">
+                    <h1 className="text-4xl font-bold text-blue-400 mb-2 font-['Press_Start_2P']">Ranked Aura</h1>
+                    <p className="text-lg text-gray-300 font-['VT323']">
+                        Battle against other developers to determine who has the superior aura
+                    </p>
+                </header>
+
+                {!matchFound && !matchStarted && (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        {/* Recent Matches Section */}
+                        <div className="bg-slate-800 rounded-lg shadow-md p-6">
+                            <h2 className="text-2xl font-bold mb-4 text-blue-300 font-['VT323']">Recent Matches</h2>
+                            <div className="space-y-4">
+                                {RECENT_MATCHES.map((match) => (
+                                    <div 
+                                        key={match.id}
+                                        className="bg-slate-900 rounded-lg p-4 flex flex-col sm:flex-row justify-between items-center gap-4"
+                                    >
+                                        <div className="flex-1">
+                                            <div className="flex justify-between items-center text-xl font-['VT323']">
+                                                <span className="font-semibold text-blue-300">{match.user1}</span>
+                                                <span className="text-gray-400">vs</span>
+                                                <span className="font-semibold text-blue-300">{match.user2}</span>
+                                            </div>
+                                            
+                                            <div className="flex justify-between items-center mt-2">
+                                                <span className={`text-lg ${match.user1Score > match.user2Score ? "text-green-400" : "text-gray-300"}`}>
+                                                    {match.user1Score}
+                                                </span>
+                                                <span className="text-gray-400 text-sm">
+                                                    {match.duration} duration
+                                                </span>
+                                                <span className={`text-lg ${match.user2Score > match.user1Score ? "text-green-400" : "text-gray-300"}`}>
+                                                    {match.user2Score}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div className="text-gray-400 text-sm font-['VT323']">
+                                            {match.timestamp}
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
                         </div>
-                        
-                        <div className="bg-gray-800/70 rounded-lg p-6 mb-8">
-                            <h3 className="text-xl text-white text-center font-['VT323'] mb-2">
-                                {userAuraScore > enemyAuraScore ? '🏆 Victory! 🏆' : userAuraScore < enemyAuraScore ? '😢 Defeat 😢' : '🤝 Draw 🤝'}
-                            </h3>
-                            <p className="text-lg text-center text-white/70 font-['VT323']">
-                                {userAuraScore > enemyAuraScore 
-                                    ? 'Your coding aura outshined your opponent!' 
-                                    : userAuraScore < enemyAuraScore 
-                                    ? "Your opponent's coding skills were too strong this time." 
-                                    : 'A perfect match of coding skills!'}
+
+                        {/* Matchmaking Section */}
+                        <div className="bg-slate-800 rounded-lg shadow-md p-6">
+                            <h2 className="text-2xl font-bold mb-6 text-blue-300 font-['VT323']">Find a Match</h2>
+
+                            <div className="grid grid-cols-1 gap-6">
+                                {/* Online Users */}
+                                <div className="bg-slate-900 rounded-lg p-4">
+                                    <div className="flex items-center justify-between">
+                                        <h3 className="text-xl text-gray-300 font-['VT323']">Online Developers</h3>
+                                        <div className="flex items-center">
+                                            <div className="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
+                                            <span className="text-2xl text-green-400 font-['VT323']">{onlineUsers}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Match Settings */}
+                                <div className="space-y-4">
+                                    {/* Match Duration */}
+                                    <div>
+                                        <label className="block mb-2 text-gray-300 font-['VT323']">
+                                            Match Duration: {matchDuration} minutes
+                                        </label>
+                                        <input
+                                            type="range"
+                                            min="2"
+                                            max="30"
+                                            value={matchDuration}
+                                            onChange={(e) => setMatchDuration(parseInt(e.target.value))}
+                                            className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer"
+                                        />
+                                    </div>
+
+                                    {/* Capture Interval */}
+                                    <div>
+                                        <label className="block mb-2 text-gray-300 font-['VT323']">
+                                            Capture Interval: {captureInterval} seconds
+                                        </label>
+                                        <input
+                                            type="range"
+                                            min="2"
+                                            max="30"
+                                            value={captureInterval}
+                                            onChange={(e) => setCaptureInterval(parseInt(e.target.value))}
+                                            className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer"
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Find Match Button */}
+                                <button
+                                    onClick={startMatchmaking}
+                                    className="w-full py-4 bg-blue-700 text-white rounded-lg font-bold hover:bg-blue-600 transition-colors font-['VT323'] text-xl"
+                                >
+                                    {searchingForMatch
+                                        ? `Searching for opponent... (${formatSearchTime(searchTime)})`
+                                        : "Find an Opponent"}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Match Found but not started */}
+                {matchFound && !matchStarted && (
+                    <div className="bg-slate-800 rounded-lg shadow-md p-8 max-w-4xl mx-auto">
+                        <div className="text-center mb-8">
+                            <h2 className="text-3xl font-bold text-blue-300 mb-2 font-['VT323']">
+                                Match Found!
+                            </h2>
+                            <p className="text-xl text-gray-300 font-['VT323']">
+                                You've been matched with <span className="text-blue-300 font-semibold">{enemyName}</span>
                             </p>
                         </div>
-                        
-                        <div className="text-center space-y-4">
-                            <button
-                                onClick={resetMatch}
-                                className="px-6 py-3 bg-purple-600 text-white rounded-full font-bold hover:bg-purple-700 transition-all transform hover:scale-105 font-['VT323'] w-full text-xl"
-                            >
-                                Back to Lobby
-                            </button>
-                            
-                            <Link
-                                href="/dashboard"
-                                className="block px-6 py-3 bg-gray-700/50 text-white rounded-full font-bold hover:bg-gray-600/50 transition-all transform hover:scale-105 font-['VT323'] text-xl"
-                            >
-                                Exit to Dashboard
-                            </Link>
-                        </div>
-                        
-                        {/* Background effects */}
-                        <div className="absolute -z-10 top-0 left-0 w-full h-full overflow-hidden rounded-xl pointer-events-none">
-                            <div className={`absolute -inset-10 ${userAuraScore > enemyAuraScore ? 'bg-green-500/10' : userAuraScore < enemyAuraScore ? 'bg-red-500/10' : 'bg-blue-500/10'} blur-3xl animate-pulse`}></div>
-                            {userAuraScore > enemyAuraScore && (
-                                <>
-                                    <div className="absolute top-10 left-10 w-20 h-20 bg-yellow-300/20 rounded-full blur-xl animate-ping"></div>
-                                    <div className="absolute bottom-10 right-10 w-20 h-20 bg-yellow-300/20 rounded-full blur-xl animate-ping delay-300"></div>
-                                </>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            )}
-            
-            {/* Countdown Modal */}
-            {showCountdownModal && (
-                <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/90">
-                    <div className="relative">
-                        <div className="text-[15rem] font-bold text-white font-['Press_Start_2P'] flex items-center justify-center animate-countdown-enter">
-                            <div className="relative">
-                                <div className="absolute -inset-8 rounded-full bg-gradient-to-br from-purple-600 to-blue-500 opacity-30 blur-xl animate-pulse"></div>
-                                <span className="relative animate-countdown-pulse">{countdownValue}</span>
-                                
-                                {/* Sparkles */}
-                                <div className="absolute -top-10 -left-10 w-8 h-8 bg-yellow-300 rounded-full blur-sm animate-sparkle opacity-60"></div>
-                                <div className="absolute top-10 -right-10 w-6 h-6 bg-blue-300 rounded-full blur-sm animate-sparkle opacity-70 delay-300"></div>
-                                <div className="absolute -bottom-5 left-10 w-4 h-4 bg-pink-300 rounded-full blur-sm animate-sparkle opacity-60"></div>
-                                <div className="absolute bottom-20 right-5 w-5 h-5 bg-green-300 rounded-full blur-sm animate-sparkle opacity-70"></div>
-                            </div>
-                        </div>
-                        <div className="absolute inset-0">
-                            <div className="w-full h-full flex items-center justify-center">
-                                <div className="w-full h-1 bg-white/30 absolute">
-                                    <div 
-                                        className="h-full bg-gradient-to-r from-purple-500 via-white to-blue-500 transition-all duration-1000" 
-                                        style={{ width: `${(countdownValue / 3) * 100}%` }}
-                                    ></div>
-                                </div>
-                            </div>
-                        </div>
-                        <p className="text-center text-xl text-white mt-10 font-['VT323'] animate-pulse">
-                            Prepare your coding aura!
-                        </p>
-                        
-                        {/* Background effects */}
-                        <div className="fixed inset-0 -z-10 pointer-events-none">
-                            <div className="absolute top-1/4 left-1/4 w-1/2 h-1/2 bg-gradient-to-br from-purple-600/20 to-blue-500/20 blur-3xl animate-pulse rounded-full"></div>
-                            <div className="absolute top-0 left-0 w-full h-full">
-                                <div className="absolute top-1/3 left-1/5 w-8 h-8 bg-white rounded-full blur-md opacity-20 animate-ping"></div>
-                                <div className="absolute top-2/3 left-3/4 w-6 h-6 bg-white rounded-full blur-md opacity-20 animate-ping delay-300"></div>
-                                <div className="absolute top-1/2 left-1/3 w-4 h-4 bg-white rounded-full blur-md opacity-20 animate-ping"></div>
-                                <div className="absolute top-1/4 left-2/3 w-5 h-5 bg-white rounded-full blur-md opacity-20 animate-ping delay-300"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
-            
-            {/* Search Modal */}
-            {showSearchModal && (
-                <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/70">
-                    <div className="bg-gray-900 p-6 rounded-xl w-full max-w-md border border-purple-500">
-                        <h2 className="text-2xl font-bold text-white text-center mb-6 font-['VT323']">
-                            Finding Opponent...
-                        </h2>
-                        
-                        <div className="text-center mb-6">
-                            <span className="text-lg text-white font-['VT323']">
-                                Elapsed Time: {formatSearchTime(searchTime)}
-                            </span>
-                        </div>
-                        
-                        <div className="relative h-20 mb-6">
-                            {/* Left side aura */}
-                            <div className="absolute top-0 left-0 w-1/3 h-full">
-                                <div className="absolute inset-0 bg-purple-600 rounded-full blur-md animate-pulse"></div>
-                                <div className="absolute inset-0 bg-purple-400 rounded-full scale-75 animate-ping"></div>
-                                <div className="absolute inset-0 flex items-center justify-center">
-                                    <span className="text-white font-['VT323'] text-xl">YOU</span>
-                                </div>
-                            </div>
-                            
-                            {/* VS */}
-                            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white text-2xl font-bold z-10 font-['Press_Start_2P'] animate-pulse">
-                                VS
-                            </div>
-                            
-                            {/* Middle lightning */}
-                            <div className="absolute top-1/2 left-0 transform -translate-y-1/2 w-full h-1 flex items-center">
-                                <div className="w-full h-0.5 bg-gradient-to-r from-purple-500 via-white to-blue-500 relative overflow-hidden">
-                                    <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-r from-purple-300 via-yellow-300 to-blue-300 animate-pulse"></div>
-                                    <div className="absolute top-0 left-1/4 w-1/2 h-full bg-white opacity-75 animate-ping"></div>
-                                </div>
-                            </div>
-                            
-                            {/* Right side aura */}
-                            <div className="absolute top-0 right-0 w-1/3 h-full">
-                                <div className="absolute inset-0 bg-blue-600 rounded-full blur-md animate-pulse"></div>
-                                <div className="absolute inset-0 bg-blue-400 rounded-full scale-75 animate-ping"></div>
-                                <div className="absolute inset-0 flex items-center justify-center">
-                                    <span className="text-white font-['VT323'] text-xl">THEM</span>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div className="text-center text-white/70 font-['VT323']">
-                            <p className="mb-2">Matching based on your developer profile...</p>
-                            <p>Finding someone with similar aura levels</p>
-                        </div>
-                        
-                        <button 
-                            onClick={() => {
-                                if (searchTimer) {
-                                    clearInterval(searchTimer);
-                                    setSearchTimer(null);
-                                }
-                                setSearchingForMatch(false);
-                                setShowSearchModal(false);
-                            }}
-                            className="mt-6 w-full py-2 bg-red-600/70 text-white rounded font-['VT323'] hover:bg-red-700/70"
-                        >
-                            Cancel Search
-                        </button>
-                    </div>
-                </div>
-            )}
-            
-            <div className="max-w-7xl w-full mx-auto mb-6 flex justify-between items-center">
-                <h1 className="text-3xl font-bold text-white font-['Press_Start_2P']">Ranked Aura</h1>
-                <div className="flex gap-4 items-center">
-                    {matchStarted && (
-                        <>
-                            <div className="text-white text-sm bg-black/30 px-3 py-1 rounded-full font-['VT323']">
-                                Images Sent: {imagesSent}
-                            </div>
-                            <button
-                                onClick={() => setShowStopMatchModal(true)}
-                                className="px-4 py-2 bg-red-600/80 text-white rounded-full text-lg font-bold hover:bg-red-700/80 transition-all transform hover:scale-105 font-['VT323']"
-                            >
-                                Stop Match
-                            </button>
-                        </>
-                    )}
-                    <Link
-                        href="/dashboard"
-                        className="px-4 py-2 bg-white/20 text-white rounded-full text-lg font-bold hover:bg-white/30 transition-all transform hover:scale-105 font-['VT323']"
-                    >
-                        Back to Dashboard
-                    </Link>
-                </div>
-            </div>
 
-            {!matchFound ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-7xl w-full mx-auto">
-                    {/* Left Side - Recent Matches */}
-                    <div className="bg-gray-900/70 p-6 rounded-lg shadow-xl">
-                        <h2 className="text-2xl font-bold text-white mb-4 font-['VT323']">Recent Matches</h2>
-                        <div className="space-y-4">
-                            {RECENT_MATCHES.map(match => (
-                                <div key={match.id} className="bg-gray-800/70 p-4 rounded-lg hover:bg-gray-700/80 transition-colors border border-gray-700/50 hover:border-purple-500/50">
-                                    <div className="flex justify-between items-center mb-2">
-                                        <div className="flex items-center space-x-2">
-                                            <span className="text-lg text-purple-400 font-['VT323']"># {match.id}</span>
-                                            <span className="text-xs text-gray-400 font-['VT323']">{match.timestamp}</span>
-                                        </div>
-                                        <span className="text-xs text-gray-400 font-['VT323'] bg-gray-700/70 px-2 py-1 rounded">
-                                            Duration: {match.duration}
-                                        </span>
-                                    </div>
-                                    
-                                    <div className="flex justify-between items-center">
-                                        <div className="flex-1 text-center border-r border-gray-700 pr-2">
-                                            <div className="text-lg text-white font-['VT323'] truncate">{match.user1}</div>
-                                            <div className={`text-xl font-bold ${match.user1Score > match.user2Score ? "text-green-400" : "text-white"} font-['VT323']`}>
-                                                {match.user1Score}
-                                            </div>
-                                        </div>
-                                        
-                                        <div className="px-2 py-1 bg-gray-900/50 rounded mx-2 text-gray-400 font-['VT323']">
-                                            VS
-                                        </div>
-                                        
-                                        <div className="flex-1 text-center border-l border-gray-700 pl-2">
-                                            <div className="text-lg text-white font-['VT323'] truncate">{match.user2}</div>
-                                            <div className={`text-xl font-bold ${match.user2Score > match.user1Score ? "text-green-400" : "text-white"} font-['VT323']`}>
-                                                {match.user2Score}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                            {/* User Side */}
+                            <div className="bg-slate-900 rounded-lg p-6 border-2 border-blue-700">
+                                <h3 className="text-2xl font-bold text-center mb-4 text-blue-300 font-['VT323']">
+                                    You
+                                </h3>
 
-                    {/* Right Side - Matchmaking */}
-                    <div className="bg-gray-900/70 p-6 rounded-lg shadow-xl">
-                        <h2 className="text-2xl font-bold text-white mb-4 font-['VT323']">Find Opponent</h2>
-                        
-                        <div className="space-y-6">
-                            <div className="flex justify-between items-center">
-                                <span className="text-white text-lg font-['VT323']">Online Developers:</span>
-                                <span className="text-green-400 text-lg font-bold font-['VT323']">{onlineUsers}</span>
-                            </div>
-                            
-                            <div className="space-y-2">
-                                <label className="text-white text-lg font-['VT323']">Match Duration:</label>
-                                <select 
-                                    value={matchDuration} 
-                                    onChange={(e) => setMatchDuration(parseInt(e.target.value))}
-                                    className="w-full p-2 bg-gray-800 text-white rounded-lg font-['VT323'] border border-gray-700 focus:border-purple-500 focus:outline-none"
-                                >
-                                    <option value={10}>10 Minutes</option>
-                                    <option value={30}>30 Minutes</option>
-                                    <option value={60}>1 Hour</option>
-                                    <option value={120}>2 Hours</option>
-                                </select>
-                            </div>
-                            
-                            <div className="space-y-2">
-                                <label className="text-white text-lg font-['VT323']">Capture Interval (seconds):</label>
-                                <input 
-                                    type="range" 
-                                    min="1" 
-                                    max="15" 
-                                    value={captureInterval} 
-                                    onChange={(e) => setCaptureInterval(parseInt(e.target.value))}
-                                    className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
-                                />
-                                <div className="text-right text-white font-['VT323']">{captureInterval} seconds</div>
-                            </div>
-                            
-                            <button
-                                onClick={startMatchmaking}
-                                disabled={searchingForMatch}
-                                className={`w-full py-3 rounded-lg text-xl font-bold transition-all transform hover:scale-105 font-['VT323'] ${
-                                    searchingForMatch 
-                                        ? "bg-gray-500 text-gray-300" 
-                                        : "bg-purple-600 text-white hover:bg-purple-700"
-                                }`}
-                            >
-                                {searchingForMatch ? "Searching..." : "Find a Match"}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            ) : (
-                <div className="max-w-7xl w-full mx-auto bg-gray-900/70 p-6 rounded-lg shadow-xl">
-                    <h2 className="text-2xl font-bold text-white mb-6 text-center font-['VT323']">
-                        {matchStarted ? `Match in Progress - ${formatTimer(roundTimer)}` : userReady ? `Starting in ${countdownValue}...` : "Match Found!"}
-                    </h2>
-                    
-                    {matchStarted && (
-                        <div className="flex justify-center mb-8">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-10 w-full max-w-3xl">
-                                {/* User Aura Circle */}
-                                <div className="flex flex-col items-center">
-                                    <div
-                                        className={`w-40 h-40 rounded-full bg-gradient-to-br ${getUserAuraColor()} flex items-center justify-center mb-3 shadow-[0_0_30px_rgba(255,255,255,0.2)] relative overflow-hidden`}
-                                    >
-                                        <div className="absolute inset-0 bg-black/10"></div>
-                                        <div className="relative text-white text-center z-10">
-                                            <div className="text-4xl font-bold font-['Press_Start_2P']">
-                                                {userAuraScore}
-                                            </div>
-                                            <div className="text-sm mt-1 font-['VT323']">Your Aura</div>
+                                <div className="space-y-6">
+                                    {/* Webcam */}
+                                    <div>
+                                        <div className="relative bg-slate-950 rounded-lg overflow-hidden aspect-video mb-3">
+                                            {webcamPermission ? (
+                                                <video
+                                                    ref={videoRef}
+                                                    autoPlay
+                                                    playsInline
+                                                    muted
+                                                    className="w-full h-full object-cover"
+                                                ></video>
+                                            ) : (
+                                                <div className="absolute inset-0 flex items-center justify-center">
+                                                    <button
+                                                        onClick={requestWebcam}
+                                                        className="px-4 py-2 bg-blue-700 text-white rounded-lg hover:bg-blue-600 transition-colors font-['VT323']"
+                                                    >
+                                                        Enable Webcam
+                                                    </button>
+                                                </div>
+                                            )}
                                         </div>
-                                        <div className="absolute inset-0 flex items-center justify-center">
-                                            <div className="animate-ping absolute w-full h-full rounded-full bg-white/10 opacity-50"></div>
-                                        </div>
-                                    </div>
-                                    <div className="text-xl text-white font-['VT323'] text-center">{getUserAuraLevel()}</div>
-                                </div>
 
-                                {/* Enemy Aura Circle */}
-                                <div className="flex flex-col items-center">
-                                    <div
-                                        className={`w-40 h-40 rounded-full bg-gradient-to-br ${getEnemyAuraColor()} flex items-center justify-center mb-3 shadow-[0_0_30px_rgba(255,255,255,0.2)] relative overflow-hidden`}
-                                    >
-                                        <div className="absolute inset-0 bg-black/10"></div>
-                                        <div className="relative text-white text-center z-10">
-                                            <div className="text-4xl font-bold font-['Press_Start_2P']">
-                                                {enemyAuraScore}
-                                            </div>
-                                            <div className="text-sm mt-1 font-['VT323']">{enemyName}&apos;s Aura</div>
-                                        </div>
-                                        <div className="absolute inset-0 flex items-center justify-center">
-                                            <div className="animate-ping absolute w-full h-full rounded-full bg-white/10 opacity-50"></div>
+                                        {/* Screen */}
+                                        <div className="relative bg-slate-950 rounded-lg overflow-hidden aspect-video">
+                                            {screenPermission ? (
+                                                <video
+                                                    ref={screenRef}
+                                                    autoPlay
+                                                    playsInline
+                                                    muted
+                                                    className="w-full h-full object-cover"
+                                                ></video>
+                                            ) : (
+                                                <div className="absolute inset-0 flex items-center justify-center">
+                                                    <button
+                                                        onClick={requestScreen}
+                                                        className="px-4 py-2 bg-blue-700 text-white rounded-lg hover:bg-blue-600 transition-colors font-['VT323']"
+                                                    >
+                                                        Share Screen
+                                                    </button>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
-                                    <div className="text-xl text-white font-['VT323'] text-center">{getEnemyAuraLevel()}</div>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* User Side */}
-                        <div className="bg-gray-800/70 p-4 rounded-lg">
-                            <div className="flex justify-between items-center mb-4">
-                                <h3 className="text-xl font-bold text-white font-['VT323']">You</h3>
-                                <div className="text-green-400 text-lg font-['VT323']">
-                                    {webcamPermission && screenPermission ? "Ready" : "Setup Required"}
-                                </div>
-                            </div>
-                            
-                            <div className="space-y-4">
-                                <div className="bg-black/50 rounded-lg p-2 aspect-video relative">
-                                    {/* Label for webcam */}
-                                    <div className="absolute top-2 left-2 bg-black/50 text-white px-2 py-0.5 rounded font-['VT323'] z-10">
-                                        Webcam
-                                    </div>
-                                    {webcamPermission ? (
-                                        <video 
-                                            ref={videoRef} 
-                                            autoPlay 
-                                            playsInline 
-                                            muted 
-                                            className="w-full h-full object-cover rounded"
-                                        />
-                                    ) : (
-                                        <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                            <p className="text-white mb-2 font-['VT323']">Webcam Access Required</p>
-                                            <button 
-                                                onClick={requestWebcam}
-                                                className="px-4 py-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 font-['VT323']"
-                                            >
-                                                Enable Webcam
-                                            </button>
-                                        </div>
-                                    )}
-                                </div>
-                                
-                                <div className="bg-black/50 rounded-lg p-2 aspect-video relative">
-                                    {/* Label for screen */}
-                                    <div className="absolute top-2 left-2 bg-black/50 text-white px-2 py-0.5 rounded font-['VT323'] z-10">
-                                        Screen
-                                    </div>
-                                    {screenPermission ? (
-                                        <video 
-                                            ref={screenRef} 
-                                            autoPlay 
-                                            playsInline 
-                                            muted 
-                                            className="w-full h-full object-cover rounded"
-                                        />
-                                    ) : (
-                                        <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                            <p className="text-white mb-2 font-['VT323']">Screen Sharing Required</p>
-                                            <button 
-                                                onClick={requestScreen}
-                                                className="px-4 py-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 font-['VT323']"
-                                            >
-                                                Share Screen
-                                            </button>
-                                        </div>
-                                    )}
-                                </div>
-                                
-                                {!matchStarted && (
+
+                                    {/* Ready Button */}
                                     <button
                                         onClick={handleReadyClick}
                                         disabled={!webcamPermission || !screenPermission || userReady}
-                                        className={`w-full py-3 rounded-lg text-xl font-bold transition-all transform hover:scale-105 font-['VT323'] ${
-                                            !webcamPermission || !screenPermission || userReady
-                                                ? "bg-gray-500 text-gray-300" 
-                                                : "bg-green-600 text-white hover:bg-green-700"
+                                        className={`w-full py-3 rounded-lg text-xl font-['VT323'] ${
+                                            userReady
+                                                ? "bg-green-600 text-white cursor-not-allowed"
+                                                : webcamPermission && screenPermission
+                                                ? "bg-blue-700 text-white hover:bg-blue-600 transition-colors"
+                                                : "bg-slate-700 text-gray-400 cursor-not-allowed"
                                         }`}
                                     >
-                                        {userReady ? "Ready!" : "I'm Ready"}
+                                        {userReady ? "Ready!" : "Ready Up"}
                                     </button>
-                                )}
-                                
-                                {matchStarted && (
-                                    <div className="mt-4">
-                                        <h4 className="text-lg text-white font-['VT323'] mb-2">Aura Changes</h4>
-                                        <div className="bg-gray-900/50 rounded-lg p-3 max-h-[150px] overflow-y-auto space-y-2">
-                                            {userScoreHistory.length ? (
-                                                userScoreHistory.map((entry, index) => (
-                                                    <div key={index} className="flex justify-between items-center text-sm">
-                                                        <div className="flex items-center">
-                                                            <span className={`font-mono font-bold ${entry.change > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                                                {entry.change > 0 ? '+' : ''}{entry.change}
-                                                            </span>
-                                                            <span className="text-gray-400 text-xs ml-2">{entry.timestamp}</span>
-                                                        </div>
-                                                        <span className="text-white font-['VT323'] truncate ml-2 text-xs max-w-[150px]">
-                                                            {entry.reason}
-                                                        </span>
-                                                    </div>
-                                                ))
-                                            ) : (
-                                                <div className="text-gray-400 text-center font-['VT323']">No aura changes yet...</div>
-                                            )}
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                        
-                        {/* Enemy Side */}
-                        <div className="bg-gray-800/70 p-4 rounded-lg">
-                            <div className="flex justify-between items-center mb-4">
-                                <h3 className="text-xl font-bold text-white font-['VT323']">{enemyName}</h3>
-                                <div className="text-green-400 text-lg font-['VT323']">Ready</div>
-                            </div>
-                            
-                            <div className="space-y-4">
-                                <div className="bg-black/50 rounded-lg p-2 aspect-video relative">
-                                    {/* Label for webcam */}
-                                    <div className="absolute top-2 left-2 bg-black/50 text-white px-2 py-0.5 rounded font-['VT323'] z-10">
-                                        Webcam
-                                    </div>
-                                    <div className="flex items-center justify-center h-full">
-                                        <div className="flex items-center text-green-400 font-['VT323']">
-                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                            </svg>
-                                            Webcam Enabled
-                                        </div>
-                                    </div>
                                 </div>
-                                
-                                <div className="bg-black/50 rounded-lg p-2 aspect-video relative">
-                                    {/* Label for screen */}
-                                    <div className="absolute top-2 left-2 bg-black/50 text-white px-2 py-0.5 rounded font-['VT323'] z-10">
-                                        Screen
-                                    </div>
-                                    <div className="flex items-center justify-center h-full">
-                                        <div className="flex items-center text-green-400 font-['VT323']">
-                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                            </svg>
-                                            Screen Sharing Enabled
+                            </div>
+
+                            {/* Enemy Side */}
+                            <div className="bg-slate-900 rounded-lg p-6">
+                                <h3 className="text-2xl font-bold text-center mb-4 text-blue-300 font-['VT323']">
+                                    {enemyName}
+                                </h3>
+
+                                <div className="space-y-6">
+                                    {/* Fake Webcam */}
+                                    <div className="relative bg-slate-950 rounded-lg overflow-hidden aspect-video mb-3">
+                                        <div className="absolute inset-0 flex items-center justify-center">
+                                            <div className="bg-green-700/30 rounded-lg px-3 py-1 flex items-center">
+                                                <div className="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
+                                                <span className="text-green-400 font-['VT323']">
+                                                    Webcam Enabled
+                                                </span>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                                
-                                {!matchStarted && (
-                                    <div className="w-full py-3 rounded-lg text-xl font-bold bg-green-600 text-center text-white font-['VT323']">
+
+                                    {/* Fake Screen */}
+                                    <div className="relative bg-slate-950 rounded-lg overflow-hidden aspect-video">
+                                        <div className="absolute inset-0 flex items-center justify-center">
+                                            <div className="bg-green-700/30 rounded-lg px-3 py-1 flex items-center">
+                                                <div className="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
+                                                <span className="text-green-400 font-['VT323']">
+                                                    Screen Shared
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Ready Status */}
+                                    <div className="w-full py-3 bg-green-600 text-white rounded-lg text-center text-xl font-['VT323']">
                                         Ready!
                                     </div>
-                                )}
-                                
-                                {matchStarted && (
-                                    <div className="mt-4">
-                                        <h4 className="text-lg text-white font-['VT323'] mb-2">Aura Changes</h4>
-                                        <div className="bg-gray-900/50 rounded-lg p-3 max-h-[150px] overflow-y-auto space-y-2">
-                                            {enemyScoreHistory.length ? (
-                                                enemyScoreHistory.map((entry, index) => (
-                                                    <div key={index} className="flex justify-between items-center text-sm">
-                                                        <div className="flex items-center">
-                                                            <span className={`font-mono font-bold ${entry.change > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                                                {entry.change > 0 ? '+' : ''}{entry.change}
-                                                            </span>
-                                                            <span className="text-gray-400 text-xs ml-2">{entry.timestamp}</span>
-                                                        </div>
-                                                        <span className="text-white font-['VT323'] truncate ml-2 text-xs max-w-[150px]">
-                                                            {entry.reason}
-                                                        </span>
-                                                    </div>
-                                                ))
-                                            ) : (
-                                                <div className="text-gray-400 text-center font-['VT323']">No aura changes yet...</div>
-                                            )}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Match Info */}
+                        <div className="bg-slate-900 rounded-lg p-4 text-center">
+                            <p className="text-lg text-gray-300 font-['VT323']">
+                                Match Duration: {matchDuration} minutes &bull; Interval: {captureInterval} seconds
+                            </p>
+                        </div>
+                    </div>
+                )}
+
+                {/* Match Started - Full Match Interface */}
+                {matchStarted && (
+                    <div className="bg-slate-800 rounded-lg shadow-md p-6">
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-2xl font-bold text-blue-300 font-['VT323']">
+                                Ranked Match
+                            </h2>
+                            <div className="bg-slate-900 rounded-lg px-4 py-2 text-xl font-['VT323'] text-blue-300">
+                                {formatTimer(roundTimer)}
+                            </div>
+                            <button
+                                onClick={() => setShowStopMatchModal(true)}
+                                className="px-4 py-2 bg-red-700 text-white rounded-lg hover:bg-red-600 transition-colors font-['VT323']"
+                            >
+                                Forfeit Match
+                            </button>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                            {/* User Side */}
+                            <div className="space-y-6">
+                                <div className="bg-slate-900 rounded-lg p-4">
+                                    <h3 className="text-xl font-bold text-center mb-2 text-blue-300 font-['VT323']">
+                                        Your Aura: {userAuraScore}
+                                    </h3>
+
+                                    <div className="w-full bg-slate-950 h-4 rounded-full overflow-hidden">
+                                        <div
+                                            className="h-full transition-all duration-500 ease-out"
+                                            style={{
+                                                width: `${Math.min(userAuraScore, 100)}%`,
+                                                backgroundColor: getUserAuraColor(),
+                                            }}
+                                        ></div>
+                                    </div>
+
+                                    <div className="mt-2 text-center">
+                                        <span className="text-lg font-['VT323']" style={{ color: getUserAuraColor() }}>
+                                            {getUserAuraLevel()}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                {/* User Webcam */}
+                                <div className="relative bg-slate-950 rounded-lg overflow-hidden aspect-video">
+                                    {webcamStreamRef.current ? (
+                                        <video
+                                            ref={videoRef}
+                                            autoPlay
+                                            playsInline
+                                            muted
+                                            className="w-full h-full object-cover"
+                                            style={{transform: "scaleX(-1)"}} // Mirror webcam for natural viewing
+                                        ></video>
+                                    ) : (
+                                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/80">
+                                            <div className="text-red-400 text-xl font-['VT323'] mb-2">Webcam disconnected</div>
+                                            <button
+                                                onClick={requestWebcam}
+                                                className="px-4 py-2 bg-blue-700 text-white rounded-lg hover:bg-blue-600 transition-colors font-['VT323']"
+                                            >
+                                                Reconnect
+                                            </button>
+                                        </div>
+                                    )}
+                                    <div className="absolute top-2 left-2 bg-slate-900/70 px-2 py-1 rounded text-xs text-blue-300">
+                                        Your Webcam
+                                    </div>
+                                    <div className="absolute bottom-2 right-2 bg-slate-900/70 px-2 py-1 rounded text-xs text-gray-300">
+                                        Images Sent: {imagesSent}
+                                    </div>
+                                </div>
+
+                                {/* User Screen */}
+                                <div className="relative bg-slate-950 rounded-lg overflow-hidden aspect-video">
+                                    {screenStreamRef.current ? (
+                                        <video
+                                            ref={screenRef}
+                                            autoPlay
+                                            playsInline
+                                            muted
+                                            className="w-full h-full object-cover"
+                                        ></video>
+                                    ) : (
+                                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/80">
+                                            <div className="text-red-400 text-xl font-['VT323'] mb-2">Screen disconnected</div>
+                                            <button
+                                                onClick={requestScreen}
+                                                className="px-4 py-2 bg-blue-700 text-white rounded-lg hover:bg-blue-600 transition-colors font-['VT323']"
+                                            >
+                                                Reconnect
+                                            </button>
+                                        </div>
+                                    )}
+                                    <div className="absolute top-2 left-2 bg-slate-900/70 px-2 py-1 rounded text-xs text-blue-300">
+                                        Your Screen
+                                    </div>
+                                </div>
+
+                                {/* User History */}
+                                <div className="bg-slate-900 rounded-lg p-4">
+                                    <h3 className="text-lg font-bold mb-2 text-blue-300 font-['VT323']">
+                                        Your Aura Changes
+                                    </h3>
+                                    <div className="space-y-2 max-h-40 overflow-y-auto pr-2">
+                                        {userScoreHistory.length > 0 ? (
+                                            userScoreHistory.map((item, index) => (
+                                                <div key={index} className="flex items-center text-sm">
+                                                    <span
+                                                        className={`font-bold mr-2 ${
+                                                            item.change > 0
+                                                                ? "text-green-400"
+                                                                : "text-red-400"
+                                                        }`}
+                                                    >
+                                                        {item.change > 0
+                                                            ? `+${item.change}`
+                                                            : item.change}
+                                                    </span>
+                                                    <span className="text-gray-300 flex-1">{item.reason}</span>
+                                                    <span className="text-gray-400 text-xs">{item.timestamp}</span>
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <div className="text-gray-400 text-center">No changes yet</div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Enemy Side */}
+                            <div className="space-y-6">
+                                <div className="bg-slate-900 rounded-lg p-4">
+                                    <h3 className="text-xl font-bold text-center mb-2 text-blue-300 font-['VT323']">
+                                        {enemyName}'s Aura: {enemyAuraScore}
+                                    </h3>
+
+                                    <div className="w-full bg-slate-950 h-4 rounded-full overflow-hidden">
+                                        <div
+                                            className="h-full transition-all duration-500 ease-out"
+                                            style={{
+                                                width: `${Math.min(enemyAuraScore, 100)}%`,
+                                                backgroundColor: getEnemyAuraColor(),
+                                            }}
+                                        ></div>
+                                    </div>
+
+                                    <div className="mt-2 text-center">
+                                        <span className="text-lg font-['VT323']" style={{ color: getEnemyAuraColor() }}>
+                                            {getEnemyAuraLevel()}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                {/* Enemy Webcam Placeholder */}
+                                <div className="relative bg-slate-950 rounded-lg overflow-hidden aspect-video">
+                                    <div className="absolute inset-0 flex items-center justify-center">
+                                        <div className="bg-slate-800/70 px-4 py-2 rounded-lg text-center">
+                                            <div className="text-blue-300 text-lg font-['VT323']">
+                                                {enemyName}'s Webcam
+                                            </div>
+                                            <div className="text-gray-400 text-sm font-['VT323']">
+                                                Privacy protected
+                                            </div>
                                         </div>
                                     </div>
-                                )}
+                                </div>
+
+                                {/* Enemy Screen Placeholder */}
+                                <div className="relative bg-slate-950 rounded-lg overflow-hidden aspect-video">
+                                    <div className="absolute inset-0 flex items-center justify-center">
+                                        <div className="bg-slate-800/70 px-4 py-2 rounded-lg text-center">
+                                            <div className="text-blue-300 text-lg font-['VT323']">
+                                                {enemyName}'s Screen
+                                            </div>
+                                            <div className="text-gray-400 text-sm font-['VT323']">
+                                                Privacy protected
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Enemy History */}
+                                <div className="bg-slate-900 rounded-lg p-4">
+                                    <h3 className="text-lg font-bold mb-2 text-blue-300 font-['VT323']">
+                                        {enemyName}'s Aura Changes
+                                    </h3>
+                                    <div className="space-y-2 max-h-40 overflow-y-auto pr-2">
+                                        {enemyScoreHistory.length > 0 ? (
+                                            enemyScoreHistory.map((item, index) => (
+                                                <div key={index} className="flex items-center text-sm">
+                                                    <span
+                                                        className={`font-bold mr-2 ${
+                                                            item.change > 0
+                                                                ? "text-green-400"
+                                                                : "text-red-400"
+                                                        }`}
+                                                    >
+                                                        {item.change > 0
+                                                            ? `+${item.change}`
+                                                            : item.change}
+                                                    </span>
+                                                    <span className="text-gray-300 flex-1">{item.reason}</span>
+                                                    <span className="text-gray-400 text-xs">{item.timestamp}</span>
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <div className="text-gray-400 text-center">No changes yet</div>
+                                        )}
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )}
 
-            {matchFound && matchStarted && (
-                <div className="fixed bottom-4 right-4 bg-gray-800/80 text-white px-3 py-2 rounded-lg shadow-lg z-10 font-['VT323']">
-                    Debug Info: {imagesSent} images sent
-                </div>
-            )}
-        </main>
+                {/* Search Modal */}
+                {showSearchModal && (
+                    <div className="fixed inset-0 flex items-center justify-center bg-black/80 z-50">
+                        <div className="relative bg-slate-800 rounded-lg p-8 max-w-md w-full mx-4 shadow-[0_0_50px_rgba(59,130,246,0.3)] border border-blue-500/30">
+                            {/* Animated glow effect */}
+                            <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg blur opacity-30 animate-pulse"></div>
+                            
+                            <div className="relative">
+                                <h2 className="text-3xl font-bold mb-6 text-center text-blue-400 font-['VT323']">
+                                    Searching for Opponent
+                                </h2>
+                                
+                                {/* Pulsing radar animation */}
+                                <div className="flex justify-center mb-8 relative">
+                                    <div className="w-32 h-32 rounded-full bg-slate-700 flex items-center justify-center">
+                                        <div className="absolute w-32 h-32 rounded-full border-4 border-blue-500/50 animate-ping"></div>
+                                        <div className="absolute w-24 h-24 rounded-full border-4 border-blue-400/40 animate-ping animation-delay-300"></div>
+                                        <div className="absolute w-16 h-16 rounded-full border-4 border-blue-300/30 animate-ping animation-delay-600"></div>
+                                        
+                                        {/* Developer icon */}
+                                        <div className="text-blue-300 text-4xl z-10">👨‍💻</div>
+                                    </div>
+                                </div>
+                                
+                                {/* Searching animation dots */}
+                                <p className="text-center text-gray-300 mb-4 font-['VT323'] text-2xl flex items-center justify-center">
+                                    Searching
+                                    <span className="inline-block w-1 h-1 bg-blue-400 rounded-full ml-1 animate-bounce"></span>
+                                    <span className="inline-block w-1 h-1 bg-blue-400 rounded-full ml-1 animate-bounce animation-delay-150"></span>
+                                    <span className="inline-block w-1 h-1 bg-blue-400 rounded-full ml-1 animate-bounce animation-delay-300"></span>
+                                </p>
+                                
+                                {/* Time elapsed */}
+                                <div className="bg-slate-900 rounded-lg py-3 px-4 text-center mb-6">
+                                    <div className="text-sm text-gray-400 font-['VT323'] mb-1">TIME ELAPSED</div>
+                                    <div className="text-2xl text-blue-300 font-['Press_Start_2P'] tracking-wider">
+                                        {formatSearchTime(searchTime)}
+                                    </div>
+                                </div>
+
+                                {/* Status messages */}
+                                <div className="space-y-2 mb-6">
+                                    <div className="flex items-center text-gray-300 font-['VT323']">
+                                        <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                                        <span>Scanning for developers with similar skill...</span>
+                                    </div>
+                                    <div className="flex items-center text-gray-300 font-['VT323']">
+                                        <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                                        <span>Analyzing aura compatibility...</span>
+                                    </div>
+                                    <div className="flex items-center text-gray-300 font-['VT323']">
+                                        <div className="w-2 h-2 bg-blue-500 animate-pulse rounded-full mr-2"></div>
+                                        <span>Establishing connection...</span>
+                                    </div>
+                                </div>
+
+                                {/* Online users indicator */}
+                                <div className="text-center text-gray-400 font-['VT323'] mb-6">
+                                    <span className="text-green-400">{onlineUsers}</span> developers currently online
+                                </div>
+                                
+                                <button
+                                    onClick={() => {
+                                        setSearchingForMatch(false);
+                                        setShowSearchModal(false);
+                                        if (searchTimer) clearInterval(searchTimer);
+                                    }}
+                                    className="w-full py-3 bg-red-700 text-white rounded-lg hover:bg-red-600 transition-colors font-['VT323'] text-xl relative overflow-hidden group"
+                                >
+                                    <span className="relative z-10">Cancel Search</span>
+                                    <div className="absolute inset-0 bg-gradient-to-r from-red-800 to-red-600 transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left"></div>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Countdown Modal */}
+                {showCountdownModal && (
+                    <div className="fixed inset-0 flex items-center justify-center bg-black/70 z-50">
+                        <div className="bg-slate-800 rounded-lg p-8">
+                            <div className="text-center">
+                                <h2 className="text-4xl font-bold mb-8 text-blue-300 font-['VT323']">
+                                    Match Starting in
+                                </h2>
+                                <div className="text-8xl font-bold text-white mb-8 font-['Press_Start_2P']">
+                                    {countdownValue}
+                                </div>
+                                <p className="text-xl text-gray-300 font-['VT323']">
+                                    Prepare for the aura battle!
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Results Modal */}
+                {showResultModal && (
+                    <div className="fixed inset-0 flex items-center justify-center bg-black/70 z-50">
+                        <div className="bg-slate-800 rounded-lg p-8 max-w-lg w-full mx-4">
+                            <h2 className="text-3xl font-bold mb-6 text-center text-blue-300 font-['VT323']">
+                                Match Results
+                            </h2>
+
+                            <div className="grid grid-cols-2 gap-6 mb-8">
+                                <div className="text-center">
+                                    <div className="text-xl text-gray-300 font-['VT323']">Your Score</div>
+                                    <div className="text-4xl font-bold font-['VT323']" style={{ color: getUserAuraColor() }}>
+                                        {userAuraScore}
+                                    </div>
+                                </div>
+                                <div className="text-center">
+                                    <div className="text-xl text-gray-300 font-['VT323']">{enemyName}'s Score</div>
+                                    <div className="text-4xl font-bold font-['VT323']" style={{ color: getEnemyAuraColor() }}>
+                                        {enemyAuraScore}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="text-center mb-8">
+                                <div className="text-2xl font-bold mb-2 font-['VT323']">
+                                    {userAuraScore > enemyAuraScore ? (
+                                        <span className="text-green-400">Victory!</span>
+                                    ) : userAuraScore < enemyAuraScore ? (
+                                        <span className="text-red-400">Defeat!</span>
+                                    ) : (
+                                        <span className="text-yellow-400">Draw!</span>
+                                    )}
+                                </div>
+                                <p className="text-gray-300 font-['VT323']">
+                                    {userAuraScore > enemyAuraScore
+                                        ? "Your developer aura outshined your opponent!"
+                                        : userAuraScore < enemyAuraScore
+                                        ? "Your opponent's aura was stronger this time."
+                                        : "Both of you have equally powerful auras!"}
+                                </p>
+                            </div>
+
+                            <button
+                                onClick={resetMatch}
+                                className="w-full py-3 bg-blue-700 text-white rounded-lg hover:bg-blue-600 transition-colors font-['VT323'] text-xl"
+                            >
+                                Return to Lobby
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {/* Stop Match Confirmation Modal */}
+                {showStopMatchModal && (
+                    <div className="fixed inset-0 flex items-center justify-center bg-black/70 z-50">
+                        <div className="bg-slate-800 rounded-lg p-6 max-w-md w-full mx-4">
+                            <h2 className="text-2xl font-bold mb-4 text-blue-300 font-['VT323']">
+                                Forfeit Match?
+                            </h2>
+                            <p className="text-gray-300 mb-6 font-['VT323']">
+                                Are you sure you want to forfeit this match? This will count as a loss.
+                            </p>
+                            <div className="flex gap-4">
+                                <button
+                                    onClick={() => setShowStopMatchModal(false)}
+                                    className="flex-1 py-3 bg-slate-700 text-gray-200 rounded-lg hover:bg-slate-600 transition-colors font-['VT323']"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={stopMatch}
+                                    className="flex-1 py-3 bg-red-700 text-white rounded-lg hover:bg-red-600 transition-colors font-['VT323']"
+                                >
+                                    Forfeit
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Hidden canvas elements */}
+                <canvas ref={webcamCanvasRef} style={{ display: "none" }}></canvas>
+                <canvas ref={screenCanvasRef} style={{ display: "none" }}></canvas>
+            </div>
+        </div>
     );
 } 

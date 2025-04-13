@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import Link from "next/link";
 import { io } from "socket.io-client";
 
 // Constants for the application
@@ -332,224 +331,234 @@ export default function AdminDashboard() {
     };
 
     return (
-        <main className="min-h-screen bg-gradient-to-br from-purple-600 to-blue-500 p-8">
-            <div className="max-w-6xl mx-auto">
-                <div className="flex justify-between items-center mb-8">
-                    <h1 className="text-4xl font-bold text-white font-['Press_Start_2P']">
-                        Admin Dashboard
-                    </h1>
-                    <div className="flex items-center gap-4">
-                        <div className="flex items-center">
-                            <label className="text-white mr-2 font-['VT323'] text-xl">
-                                Use API:
-                            </label>
+        <div className="min-h-[calc(100vh-64px)] bg-gradient-to-br from-slate-900 to-gray-800 text-gray-200 p-6">
+            <div className="max-w-7xl mx-auto">
+                {/* Page Header */}
+                <div className="mb-8">
+                    <h1 className="text-4xl font-bold text-blue-400 mb-2 font-['Press_Start_2P']">Admin Dashboard</h1>
+                    <p className="text-lg text-gray-300 font-['VT323']">
+                        Monitor developer aura activity in real-time
+                    </p>
+                </div>
+
+                {/* Connection Status */}
+                <div className={`mb-6 p-4 rounded-lg font-['VT323'] text-xl ${
+                    connected ? "bg-slate-800" : "bg-slate-800 border border-red-500"
+                }`}>
+                    <div className="flex items-center">
+                        <div className={`w-3 h-3 rounded-full mr-2 ${
+                            connected ? "bg-green-500" : "bg-red-500"
+                        }`}></div>
+                        <span className={connected ? "text-green-400" : "text-red-400"}>
+                            {connected ? "Connected to WebSocket" : "Disconnected"}
+                        </span>
+                        {useRealApi && (
+                            <div className="ml-4">
+                                <button
+                                    onClick={() => {
+                                        socketRef.current?.connect();
+                                    }}
+                                    className="px-3 py-1 bg-blue-700 text-white rounded hover:bg-blue-600 transition-colors"
+                                    disabled={connected}
+                                >
+                                    Reconnect
+                                </button>
+                            </div>
+                        )}
+                        {!useRealApi && (
+                            <span className="ml-4 text-yellow-400">(Using mock data)</span>
+                        )}
+                    </div>
+                    {error && <div className="mt-2 text-red-400">{error}</div>}
+
+                    {/* Toggle for real API / mock data */}
+                    <div className="mt-4 flex items-center">
+                        <span className="text-gray-300 mr-2">Mode:</span>
+                        <label className="relative inline-flex items-center cursor-pointer">
                             <input
                                 type="checkbox"
+                                className="sr-only peer"
                                 checked={useRealApi}
                                 onChange={() => setUseRealApi(!useRealApi)}
-                                className="w-5 h-5"
                             />
-                        </div>
-                        <Link
-                            href="/"
-                            className="text-white hover:text-purple-200 transition-colors font-['VT323'] text-xl"
-                        >
-                            ← Back to Home
-                        </Link>
+                            <div className="w-11 h-6 bg-slate-700 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                            <span className="ml-3 text-gray-300">
+                                {useRealApi ? "Real-time Data" : "Mock Data"}
+                            </span>
+                        </label>
                     </div>
                 </div>
 
-                {error && (
-                    <div className="bg-red-500/20 text-white p-4 rounded-lg mb-8 font-['VT323'] text-xl">
-                        {error}
-                    </div>
-                )}
-
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                     {/* Left Column - Snapshot Timeline */}
-                    <div className="bg-white/10 backdrop-blur-md rounded-lg p-6 overflow-auto max-h-[80vh]">
-                        <h2 className="text-2xl text-white font-['VT323'] mb-4">
-                            Aura Point Timeline
-                        </h2>
-
-                        <div className="space-y-6">
-                            {connected && snapshots.length === 0 && (
-                                <div className="text-white font-['VT323'] text-center py-8">
-                                    Waiting for user activity data...
-                                </div>
-                            )}
-
-                            {snapshots.map((snapshot, index) => (
-                                <div key={index} className="bg-black/20 rounded-lg p-4">
-                                    <div className="flex justify-between items-center mb-2">
-                                        <span
-                                            className={`text-xl font-['VT323'] ${
-                                                (snapshot.pointChange || 0) >= 0
-                                                    ? "text-green-400"
-                                                    : "text-red-400"
-                                            }`}
-                                        >
-                                            {(snapshot.pointChange || 0) >= 0
-                                                ? `+${snapshot.pointChange}`
-                                                : snapshot.pointChange}{" "}
-                                            points
-                                        </span>
-                                        <span className="text-white/70 font-['VT323']">
-                                            {formatTime(snapshot.timestamp)}
-                                        </span>
-                                    </div>
-
-                                    <div className="grid grid-cols-2 gap-2 mb-3">
-                                        {/* Webcam image */}
-                                        <div className="relative overflow-hidden rounded bg-black/40">
-                                            {(snapshot.webcam_image || snapshot.image) && (
-                                                <>
-                                                    <div className="absolute top-1 left-1 text-xs bg-black/50 text-white px-1 rounded">
-                                                        Webcam
-                                                    </div>
-                                                    <img
-                                                        src={
-                                                            (snapshot.webcam_image ||
-                                                                snapshot.image)!.startsWith("data:")
-                                                                ? (snapshot.webcam_image ||
-                                                                      snapshot.image)!
-                                                                : `data:image/jpeg;base64,${(snapshot.webcam_image ||
-                                                                      snapshot.image)!}`
-                                                        }
-                                                        alt="Webcam snapshot"
-                                                        className="w-full object-cover"
-                                                        style={{ maxHeight: "150px" }}
-                                                    />
-                                                </>
-                                            )}
+                    <div className="lg:col-span-5 xl:col-span-4 bg-slate-800 rounded-lg p-4 shadow-md">
+                        <h2 className="text-2xl font-bold mb-4 text-blue-300 font-['VT323']">Aura Snapshots</h2>
+                        <div className="space-y-4 max-h-[75vh] overflow-y-auto pr-2">
+                            {snapshots.length > 0 ? (
+                                snapshots.map((snapshot, index) => (
+                                    <div key={index} className="bg-slate-900 rounded-lg overflow-hidden shadow-md">
+                                        {/* Snapshot Header */}
+                                        <div className="p-3 flex items-center justify-between">
+                                            <div className="text-xl font-['VT323']">
+                                                <span 
+                                                    className={`text-xl ${
+                                                        (snapshot.pointChange || 0) > 0 
+                                                            ? "text-green-400" 
+                                                            : (snapshot.pointChange || 0) < 0 
+                                                                ? "text-red-400" 
+                                                                : "text-gray-400"
+                                                    }`}
+                                                >
+                                                    {(snapshot.pointChange || 0) > 0 
+                                                        ? `+${snapshot.pointChange}` 
+                                                        : snapshot.pointChange}
+                                                </span>
+                                                <span className="text-gray-400 text-sm ml-2">
+                                                    {snapshot.timestamp ? formatTime(snapshot.timestamp) : "Just now"}
+                                                </span>
+                                            </div>
                                         </div>
 
-                                        {/* Screen image */}
-                                        <div className="relative overflow-hidden rounded bg-black/40">
-                                            {snapshot.screenshot_image ? (
-                                                <>
-                                                    <div className="absolute top-1 left-1 text-xs bg-black/50 text-white px-1 rounded">
+                                        {/* Image(s) */}
+                                        <div className="flex flex-col sm:flex-row">
+                                            {/* Webcam Image */}
+                                            {snapshot.image && (
+                                                <div className="flex-1 relative">
+                                                    <img 
+                                                        src={snapshot.image.startsWith('data:') ? snapshot.image : `data:image/jpeg;base64,${snapshot.image}`} 
+                                                        alt="Developer" 
+                                                        className="w-full h-48 object-cover border-t border-b border-slate-700"
+                                                        onError={(e) => {
+                                                            console.error("Error loading webcam image");
+                                                            (e.target as HTMLImageElement).src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQwIiBoZWlnaHQ9IjQ4MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjMzMzIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIyNCIgZmlsbD0id2hpdGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJtaWRkbGUiPkltYWdlIEVycm9yPC90ZXh0Pjwvc3ZnPg==';
+                                                        }}
+                                                    />
+                                                    <div className="absolute top-2 left-2 bg-slate-900/70 px-2 py-1 rounded text-xs text-gray-300">
+                                                        Webcam
+                                                    </div>
+                                                </div>
+                                            )}
+                                            
+                                            {/* Screen Image - only shown if available */}
+                                            {snapshot.screenshot_image && (
+                                                <div className="flex-1 relative">
+                                                    <img 
+                                                        src={snapshot.screenshot_image.startsWith('data:') ? snapshot.screenshot_image : `data:image/jpeg;base64,${snapshot.screenshot_image}`} 
+                                                        alt="Screen" 
+                                                        className="w-full h-48 object-cover border-t border-b border-slate-700"
+                                                        onError={(e) => {
+                                                            console.error("Error loading screenshot image");
+                                                            (e.target as HTMLImageElement).src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQwIiBoZWlnaHQ9IjQ4MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjNTU1Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIyNCIgZmlsbD0id2hpdGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJtaWRkbGUiPlNjcmVlbiBFcnJvcjwvdGV4dD48L3N2Zz4=';
+                                                        }}
+                                                    />
+                                                    <div className="absolute top-2 left-2 bg-slate-900/70 px-2 py-1 rounded text-xs text-gray-300">
                                                         Screen
                                                     </div>
-                                                    <img
-                                                        src={
-                                                            snapshot.screenshot_image.startsWith(
-                                                                "data:"
-                                                            )
-                                                                ? snapshot.screenshot_image
-                                                                : `data:image/jpeg;base64,${snapshot.screenshot_image}`
-                                                        }
-                                                        alt="Screen snapshot"
-                                                        className="w-full object-cover"
-                                                        style={{ maxHeight: "150px" }}
-                                                        onError={(e) => {
-                                                            console.log(
-                                                                "[DEBUG] Screenshot image load error:",
-                                                                e
-                                                            );
-                                                            (
-                                                                e.target as HTMLImageElement
-                                                            ).style.display = "none";
-                                                        }}
-                                                        onLoad={() =>
-                                                            console.log(
-                                                                "[DEBUG] Screenshot loaded successfully for snapshot:",
-                                                                snapshot.timestamp
-                                                            )
-                                                        }
-                                                    />
-                                                </>
-                                            ) : (
-                                                <div className="flex flex-col items-center justify-center h-full min-h-[150px] text-white/70 text-sm p-2">
-                                                    <svg
-                                                        xmlns="http://www.w3.org/2000/svg"
-                                                        className="h-8 w-8 mb-2 text-white/40"
-                                                        fill="none"
-                                                        viewBox="0 0 24 24"
-                                                        stroke="currentColor"
-                                                    >
-                                                        <path
-                                                            strokeLinecap="round"
-                                                            strokeLinejoin="round"
-                                                            strokeWidth={2}
-                                                            d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                                                        />
-                                                    </svg>
-                                                    No screen capture available
                                                 </div>
                                             )}
                                         </div>
-                                    </div>
 
-                                    <p className="text-white font-['VT323'] text-lg">
-                                        {snapshot.explanation}
+                                        {/* Analysis */}
+                                        <div className="p-3">
+                                            <p className="text-gray-300 font-['VT323'] text-lg">
+                                                {snapshot.explanation || "No analysis available"}
+                                            </p>
+                                        </div>
+                                    </div>
+                                ))
+                            ) : (
+                                <div className="bg-slate-900 rounded-lg p-4 text-center">
+                                    <p className="text-gray-400 font-['VT323'] text-xl">
+                                        Waiting for developer activity...
                                     </p>
                                 </div>
-                            ))}
+                            )}
                         </div>
                     </div>
 
-                    {/* Middle Column - Aura Score */}
-                    <div className="bg-white/10 backdrop-blur-md rounded-lg p-6 flex flex-col items-center justify-center text-center">
-                        <h2 className="text-2xl text-white font-['VT323'] mb-6">
-                            Developer Aura Status
-                        </h2>
-
-                        <div
-                            className={`w-64 h-64 rounded-full bg-gradient-to-br ${getAuraColor()} flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(255,255,255,0.3)]`}
-                        >
-                            <div className="text-white text-center">
-                                <div className="text-6xl font-bold font-['Press_Start_2P']">
-                                    {totalPoints}
-                                </div>
-                                <div className="text-xl mt-2 font-['VT323']">Aura Points</div>
+                    {/* Middle Column - Aura Points */}
+                    <div className="lg:col-span-4 xl:col-span-4 flex flex-col gap-6">
+                        <div className="bg-slate-800 rounded-lg p-6 flex-1 flex flex-col items-center justify-center shadow-md">
+                            <h2 className="text-2xl font-bold mb-2 text-blue-300 font-['VT323']">Developer Aura</h2>
+                            <div 
+                                className="text-8xl font-bold mb-2 font-['Press_Start_2P']"
+                                style={{ color: getAuraColor() }}
+                            >
+                                {totalPoints}
+                            </div>
+                            <div 
+                                className="text-3xl text-center font-['VT323']"
+                                style={{ color: getAuraColor() }}
+                            >
+                                {getAuraLevel()}
+                            </div>
+                            
+                            <div className="w-full bg-slate-900 h-4 rounded-full mt-6 overflow-hidden">
+                                <div 
+                                    className="h-full rounded-full transition-all duration-500 ease-out"
+                                    style={{ 
+                                        width: `${Math.min(totalPoints, 100)}%`,
+                                        backgroundColor: getAuraColor() 
+                                    }}
+                                ></div>
                             </div>
                         </div>
-
-                        <div className="text-3xl text-white font-['VT323'] mb-2">
-                            {getAuraLevel()}
-                        </div>
-
-                        <div
-                            className={`mt-4 px-4 py-2 rounded-lg ${
-                                connected ? "bg-green-500/20" : "bg-red-500/20"
-                            }`}
-                        >
-                            <span className="text-white font-['VT323'] text-lg">
-                                {connected
-                                    ? useRealApi
-                                        ? "Connected to aura monitoring system"
-                                        : "Using simulated data"
-                                    : "Disconnected from aura monitoring system"}
-                            </span>
+                        
+                        {/* Image capture stats (simplified) */}
+                        <div className="bg-slate-800 rounded-lg p-6 shadow-md">
+                            <h2 className="text-2xl font-bold mb-4 text-blue-300 font-['VT323']">Session Stats</h2>
+                            <div className="space-y-3">
+                                <div className="flex justify-between items-center">
+                                    <span className="text-gray-300 font-['VT323'] text-lg">
+                                        Snapshots received
+                                    </span>
+                                    <span className="text-xl font-bold text-blue-300 font-['VT323']">
+                                        {snapshots.length}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-gray-300 font-['VT323'] text-lg">
+                                        Current aura level
+                                    </span>
+                                    <span className="text-xl font-bold font-['VT323']" style={{ color: getAuraColor() }}>
+                                        {getAuraLevel()}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-gray-300 font-['VT323'] text-lg">
+                                        WebSocket status
+                                    </span>
+                                    <span className={`text-xl font-bold font-['VT323'] ${connected ? "text-green-400" : "text-red-400"}`}>
+                                        {connected ? "Connected" : "Disconnected"}
+                                    </span>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
                     {/* Right Column - Tips */}
-                    <div className="bg-white/10 backdrop-blur-md rounded-lg p-6">
-                        <h2 className="text-2xl text-white font-['VT323'] mb-4">
-                            Productivity Tips
-                        </h2>
-
-                        <ul className="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
-                            {Array.isArray(tips) && tips.length > 0 ? (
-                                tips.map((tip, index) => (
-                                    <li
-                                        key={index}
-                                        className="bg-black/20 rounded-lg p-3 text-white font-['VT323'] text-lg"
-                                    >
-                                        {tip}
-                                    </li>
-                                ))
-                            ) : (
-                                <li className="bg-black/20 rounded-lg p-3 text-white font-['VT323'] text-lg">
-                                    No tips available yet.
-                                </li>
-                            )}
-                        </ul>
+                    <div className="lg:col-span-3 xl:col-span-4 bg-slate-800 rounded-lg p-6 shadow-md">
+                        <h2 className="text-2xl font-bold mb-4 text-blue-300 font-['VT323']">Developer Tips</h2>
+                        <div className="space-y-4 max-h-[75vh] overflow-y-auto pr-2">
+                            {tips.map((tip, index) => (
+                                <div 
+                                    key={index} 
+                                    className={`p-4 rounded-lg ${
+                                        index % 2 === 0 ? "bg-slate-700" : "bg-slate-900"
+                                    }`}
+                                >
+                                    <div className="flex">
+                                        <div className="flex-shrink-0 mr-3 text-blue-400">
+                                            <span role="img" aria-label="tip">💡</span>
+                                        </div>
+                                        <p className="text-gray-300 font-['VT323'] text-lg">{tip}</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 </div>
             </div>
-        </main>
+        </div>
     );
 }

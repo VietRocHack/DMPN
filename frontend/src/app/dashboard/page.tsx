@@ -615,291 +615,266 @@ export default function Dashboard() {
         );
     };
 
+    // Function to determine the aura color based on points
+    const getAuraColor = () => {
+        if (totalPoints < 30) return "#ef4444"; // red-500
+        if (totalPoints < 50) return "#f97316"; // orange-500
+        if (totalPoints < 70) return "#eab308"; // yellow-500
+        if (totalPoints < 90) return "#22c55e"; // green-500
+        return "#3b82f6"; // blue-500
+    };
+
+    // Function to determine the aura level based on points
+    const getAuraLevel = () => {
+        if (totalPoints < 30) return "Code Newbie";
+        if (totalPoints < 50) return "Script Kiddie";
+        if (totalPoints < 70) return "Function Fiend";
+        if (totalPoints < 90) return "Algorithm Ace";
+        return "Syntax Sorcerer";
+    };
+
     return (
-        <main className="min-h-screen bg-gradient-to-br from-purple-600 to-blue-500 p-8">
-            <div className="max-w-6xl mx-auto">
-                <div className="flex justify-between items-center mb-8">
-                    <h1 className="text-4xl font-bold text-white font-['Press_Start_2P']">
-                        User Dashboard
-                    </h1>
-                    <Link
-                        href="/ranked"
-                        className="px-4 py-2 bg-purple-600 text-white rounded-full text-lg font-bold hover:bg-purple-700 transition-all transform hover:scale-105 font-['VT323']"
-                    >
-                        Ranked Mode
-                    </Link>
-                    <div className="flex items-center gap-4">
-                        <div className="flex items-center">
-                            <label className="text-white mr-2 font-['VT323'] text-xl">
-                                Use API:
-                            </label>
-                            <input
-                                type="checkbox"
-                                checked={useRealApi}
-                                onChange={() => setUseRealApi(!useRealApi)}
-                                className="w-5 h-5"
-                            />
-                        </div>
-                        <Link
-                            href="/"
-                            className="text-white hover:text-purple-200 transition-colors font-['VT323'] text-xl"
-                        >
-                            ← Back to Home
-                        </Link>
-                    </div>
-                </div>
+        <div className="min-h-[calc(100vh-64px)] bg-gradient-to-br from-slate-900 to-gray-800 text-gray-200 p-6">
+            <div className="max-w-7xl mx-auto">
+                {/* Page Header */}
+                <header className="mb-8">
+                    <h1 className="text-4xl font-bold text-blue-400 mb-2 font-['Press_Start_2P']">User Dashboard</h1>
+                    <p className="text-lg text-gray-300 font-['VT323']">
+                        Share your webcam and screen to analyze your developer aura
+                    </p>
+                </header>
 
-                {/* API Status Message */}
-                {apiMessage && (
-                    <div
-                        className={`mb-4 p-3 rounded-lg font-['VT323'] text-lg text-center ${
-                            apiMessage.includes("Error")
-                                ? "bg-red-500/20 text-white"
-                                : "bg-green-500/20 text-white"
-                        }`}
-                    >
-                        {apiMessage}
-                    </div>
-                )}
-
-                {/* Aura Score Display */}
-                <div className="bg-black/30 rounded-xl p-6 mb-6 text-center">
-                    <h2 className="text-2xl text-white font-['VT323'] mb-2">Your Developer Aura</h2>
-                    <div className="text-5xl font-bold text-white mb-2 font-['Press_Start_2P']">
-                        {totalPoints}
-                    </div>
-                    {lastAnalysis && (
-                        <div className="text-xl text-white/90 font-['VT323']">{lastAnalysis}</div>
-                    )}
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                {/* Permission Request Section */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
                     {/* Webcam Section */}
-                    <div className="bg-white/10 backdrop-blur-md rounded-lg p-6">
-                        <div className="flex justify-between items-center mb-4">
-                            <h2 className="text-2xl text-white font-['VT323']">Webcam Feed</h2>
-                            <span
-                                className={`px-3 py-1 rounded-full text-sm font-['VT323'] ${
-                                    webcamPermission === null
-                                        ? "bg-yellow-500/20 text-yellow-200"
-                                        : webcamPermission
-                                        ? "bg-green-500/20 text-green-200"
-                                        : "bg-red-500/20 text-red-200"
-                                }`}
-                            >
-                                {webcamPermission === null
-                                    ? "No Permission"
-                                    : webcamPermission
-                                    ? "Ready"
-                                    : "Denied"}
-                            </span>
-                        </div>
-                        {webcamPermission === null ? (
-                            <button
-                                onClick={requestWebcam}
-                                className="w-full py-4 bg-white text-purple-600 rounded-lg font-bold hover:bg-opacity-90 transition-all font-['VT323'] text-xl"
-                            >
-                                Enable Webcam
-                            </button>
-                        ) : webcamPermission ? (
-                            <div className="relative">
-                                <video
-                                    ref={videoRef}
-                                    autoPlay
-                                    playsInline
-                                    controls={false}
-                                    muted
-                                    width="640"
-                                    height="480"
-                                    className="w-full h-[200px] object-contain rounded-lg bg-black"
-                                    style={{ transform: "scaleX(-1)" }}
-                                    onPlay={() => console.log("Webcam video play event fired")}
-                                />
-
-                                {/* Hidden canvas for capturing frames */}
-                                <canvas ref={webcamCanvasRef} className="hidden"></canvas>
-
-                                {/* Fallback image display */}
-                                {webcamImage && (
-                                    <div className="mt-2">
-                                        <div className="text-xs text-white mb-1 font-['VT323']">
-                                            Latest Captured Frame:
-                                        </div>
-                                        <img
-                                            src={webcamImage}
-                                            alt="Webcam capture"
-                                            className="w-full h-[80px] object-contain bg-black/50 rounded-lg"
-                                            style={{ transform: "scaleX(-1)" }}
-                                        />
-                                    </div>
-                                )}
-
-                                <div className="absolute top-2 left-2 text-green-300 font-['VT323'] text-xs bg-black/50 p-1 rounded">
-                                    {webcamStreamRef.current
-                                        ? `Active: ${
-                                              webcamStreamRef.current.getVideoTracks().length
-                                          } tracks`
-                                        : "No active stream"}
-                                </div>
-
+                    <div className="bg-slate-800 rounded-lg p-6 shadow-md">
+                        <h2 className="text-2xl font-bold mb-4 text-blue-300 font-['VT323']">Webcam</h2>
+                        <div className="mb-4">
+                            {webcamPermission === null ? (
                                 <button
-                                    onClick={testWebcamCapture}
-                                    className="absolute bottom-2 right-2 bg-blue-500 text-white text-xs px-2 py-1 rounded font-['VT323']"
+                                    onClick={requestWebcam}
+                                    className="px-6 py-3 bg-blue-700 text-white rounded-lg hover:bg-blue-600 transition-colors font-['VT323'] text-xl"
                                 >
-                                    Test Capture
+                                    Enable Webcam
                                 </button>
-                            </div>
-                        ) : (
-                            <div className="text-red-400 text-center py-4 font-['VT323']">
-                                Webcam access denied
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Screen Capture Section */}
-                    <div className="bg-white/10 backdrop-blur-md rounded-lg p-6">
-                        <div className="flex justify-between items-center mb-4">
-                            <h2 className="text-2xl text-white font-['VT323']">Screen Capture</h2>
-                            <span
-                                className={`px-3 py-1 rounded-full text-sm font-['VT323'] ${
-                                    screenPermission === null
-                                        ? "bg-yellow-500/20 text-yellow-200"
-                                        : screenPermission
-                                        ? "bg-green-500/20 text-green-200"
-                                        : "bg-red-500/20 text-red-200"
-                                }`}
-                            >
-                                {screenPermission === null
-                                    ? "No Permission"
-                                    : screenPermission
-                                    ? "Ready"
-                                    : "Denied"}
-                            </span>
-                        </div>
-                        {screenPermission === null ? (
-                            <button
-                                onClick={requestScreen}
-                                className="w-full py-4 bg-white text-purple-600 rounded-lg font-bold hover:bg-opacity-90 transition-all font-['VT323'] text-xl"
-                            >
-                                Enable Screen Capture
-                            </button>
-                        ) : screenPermission ? (
-                            <div className="relative">
-                                <video
-                                    ref={screenRef}
-                                    autoPlay
-                                    playsInline
-                                    controls={false}
-                                    muted
-                                    width="640"
-                                    height="480"
-                                    className="w-full h-[200px] object-contain rounded-lg bg-black"
-                                    onPlay={() => console.log("Screen video play event fired")}
-                                />
-
-                                {/* Hidden canvas for capturing frames */}
-                                <canvas ref={screenCanvasRef} className="hidden"></canvas>
-
-                                {/* Fallback image display */}
-                                {screenImage && (
-                                    <div className="mt-2">
-                                        <div className="text-xs text-white mb-1 font-['VT323']">
-                                            Latest Captured Frame:
-                                        </div>
-                                        <img
-                                            src={screenImage}
-                                            alt="Screen capture"
-                                            className="w-full h-[80px] object-contain bg-black/50 rounded-lg"
-                                        />
-                                    </div>
-                                )}
-
-                                <div className="absolute top-2 left-2 text-green-300 font-['VT323'] text-xs bg-black/50 p-1 rounded">
-                                    {screenStreamRef.current
-                                        ? `Active: ${
-                                              screenStreamRef.current.getVideoTracks().length
-                                          } tracks`
-                                        : "No active stream"}
+                            ) : webcamPermission ? (
+                                <div className="text-green-400 font-['VT323'] text-lg">
+                                    ✓ Webcam enabled
                                 </div>
-
-                                <button
-                                    onClick={testScreenCapture}
-                                    className="absolute bottom-2 right-2 bg-blue-500 text-white text-xs px-2 py-1 rounded font-['VT323']"
-                                >
-                                    Test Capture
-                                </button>
-                            </div>
-                        ) : (
-                            <div className="text-red-400 text-center py-4 font-['VT323']">
-                                Screen capture access denied
-                            </div>
-                        )}
-                    </div>
-                </div>
-
-                {/* Controls Section */}
-                <div className="bg-white/10 backdrop-blur-md rounded-lg p-6">
-                    <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-                        <div className="flex items-center gap-4 w-full md:w-auto">
-                            <label className="text-white font-['VT323'] text-xl">
-                                Capture Interval (seconds):
-                            </label>
-                            <input
-                                type="number"
-                                min="1"
-                                max="60"
-                                value={captureInterval}
-                                onChange={handleIntervalChange}
-                                className="w-20 px-2 py-1 rounded bg-white/20 text-white font-['VT323'] text-xl"
-                                disabled={isCapturing}
-                            />
+                            ) : (
+                                <div className="text-red-400 font-['VT323'] text-lg">
+                                    ✗ Webcam access denied
+                                </div>
+                            )}
                         </div>
-                        <div className="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
-                            <button
-                                onClick={isCapturing ? stopCapturing : startCapturing}
-                                disabled={!webcamPermission || !screenPermission}
-                                className={`px-8 py-4 rounded-lg font-bold transition-all font-['VT323'] text-xl w-full sm:w-auto ${
-                                    isCapturing
-                                        ? "bg-red-500 text-white hover:bg-red-600"
-                                        : "bg-white text-purple-600 hover:bg-opacity-90"
-                                } ${
-                                    !webcamPermission || !screenPermission
-                                        ? "opacity-50 cursor-not-allowed"
-                                        : ""
-                                }`}
-                            >
-                                {isCapturing ? "Stop Capturing" : "Start Capturing"}
-                            </button>
-                            {isCapturing && (
-                                <div className="text-white font-['VT323'] text-xl bg-black/30 px-3 py-1 rounded text-center sm:text-left w-full sm:w-auto">
-                                    Captures: {captureCount} | Interval: {captureInterval}s
+                        <div className="relative bg-slate-700 rounded-lg overflow-hidden aspect-video">
+                            <video
+                                ref={videoRef}
+                                autoPlay
+                                playsInline
+                                muted
+                                className="w-full h-full object-cover"
+                            ></video>
+                            {!webcamPermission && (
+                                <div className="absolute inset-0 flex items-center justify-center bg-slate-900/80 text-gray-300 font-['VT323'] text-xl">
+                                    No webcam access
                                 </div>
                             )}
                         </div>
                     </div>
-                    {/* Debug button only shown in development */}
-                    {process.env.NODE_ENV !== "production" && (
-                        <div className="mt-4 text-center">
-                            <button
-                                onClick={generateCurlCommand}
-                                className="px-4 py-2 bg-gray-800 text-gray-200 rounded-lg font-['VT323'] text-sm hover:bg-gray-700"
+
+                    {/* Screen Capture Section */}
+                    <div className="bg-slate-800 rounded-lg p-6 shadow-md">
+                        <h2 className="text-2xl font-bold mb-4 text-blue-300 font-['VT323']">Screen Capture</h2>
+                        <div className="mb-4">
+                            {screenPermission === null ? (
+                                <button
+                                    onClick={requestScreen}
+                                    className="px-6 py-3 bg-blue-700 text-white rounded-lg hover:bg-blue-600 transition-colors font-['VT323'] text-xl"
+                                >
+                                    Share Screen
+                                </button>
+                            ) : screenPermission ? (
+                                <div className="text-green-400 font-['VT323'] text-lg">
+                                    ✓ Screen sharing enabled
+                                </div>
+                            ) : (
+                                <div className="text-red-400 font-['VT323'] text-lg">
+                                    ✗ Screen sharing denied
+                                </div>
+                            )}
+                        </div>
+                        <div className="relative bg-slate-700 rounded-lg overflow-hidden aspect-video">
+                            <video
+                                ref={screenRef}
+                                autoPlay
+                                playsInline
+                                muted
+                                className="w-full h-full object-cover"
+                            ></video>
+                            {!screenPermission && (
+                                <div className="absolute inset-0 flex items-center justify-center bg-slate-900/80 text-gray-300 font-['VT323'] text-xl">
+                                    No screen access
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Controls and Stats Section */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                    {/* Aura Points and Control Section */}
+                    <div className="bg-slate-800 rounded-lg p-6 shadow-md">
+                        <div className="flex flex-col items-center mb-6">
+                            <h2 className="text-3xl font-bold text-center mb-2 text-blue-300 font-['VT323']">
+                                Developer Aura Points
+                            </h2>
+                            <div
+                                className="text-5xl font-bold mb-1 font-['VT323']"
+                                style={{ color: getAuraColor() }}
                             >
-                                Debug: Generate cURL Command
-                            </button>
-                            <div className="text-white/50 text-xs mt-1 font-['VT323']">
-                                (Check console for output)
+                                {totalPoints}
+                            </div>
+                            <div
+                                className="text-2xl font-['VT323']"
+                                style={{ color: getAuraColor() }}
+                            >
+                                {getAuraLevel()}
                             </div>
                         </div>
-                    )}
+
+                        {/* Capture Controls */}
+                        <div className="mb-6">
+                            <div className="flex mb-4">
+                                <button
+                                    onClick={isCapturing ? stopCapturing : startCapturing}
+                                    disabled={!webcamPermission || !screenPermission}
+                                    className={`flex-1 px-6 py-3 text-xl rounded-lg font-['VT323'] transition-colors ${
+                                        isCapturing
+                                            ? "bg-red-600 hover:bg-red-700 text-white"
+                                            : "bg-blue-700 hover:bg-blue-600 text-white"
+                                    } ${
+                                        !webcamPermission || !screenPermission
+                                            ? "opacity-50 cursor-not-allowed"
+                                            : ""
+                                    }`}
+                                >
+                                    {isCapturing ? "Stop Capturing" : "Start Capturing"}
+                                </button>
+                            </div>
+
+                            {/* Interval Control */}
+                            <div className="mb-4">
+                                <label className="block mb-2 text-gray-300 font-['VT323'] text-lg">
+                                    Capture interval: {captureInterval} seconds
+                                </label>
+                                <input
+                                    type="range"
+                                    min="1"
+                                    max="30"
+                                    value={captureInterval}
+                                    onChange={handleIntervalChange}
+                                    className="w-full h-2 bg-slate-600 rounded-lg appearance-none cursor-pointer"
+                                />
+                            </div>
+
+                            {/* API Mode Toggle */}
+                            <div className="flex items-center space-x-3">
+                                <span className="text-gray-300 font-['VT323'] text-lg">
+                                    Use mock data
+                                </span>
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={useRealApi}
+                                        onChange={() => setUseRealApi(!useRealApi)}
+                                        className="sr-only peer"
+                                    />
+                                    <div className="w-11 h-6 bg-slate-700 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                </label>
+                                <span className="text-gray-300 font-['VT323'] text-lg">
+                                    Use real API
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* Capture Status */}
+                        <div className="mb-6">
+                            <h3 className="text-xl font-bold mb-2 text-blue-300 font-['VT323']">
+                                Status
+                            </h3>
+                            <div className="bg-slate-900 p-4 rounded-lg text-lg font-['VT323']">
+                                {isCapturing ? (
+                                    <div className="text-green-400">
+                                        Capturing active - {captureCount} snapshots sent
+                                    </div>
+                                ) : (
+                                    <div className="text-gray-400">Waiting to start capture...</div>
+                                )}
+                                {apiMessage && (
+                                    <div className="mt-2 text-yellow-300 text-base">
+                                        {apiMessage}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Last Analysis */}
+                    <div className="bg-slate-800 rounded-lg p-6 shadow-md">
+                        <h2 className="text-2xl font-bold mb-4 text-blue-300 font-['VT323']">Last Analysis</h2>
+                        {lastAnalysis ? (
+                            <div className="bg-slate-900 p-4 rounded-lg">
+                                <div className="font-['VT323'] text-xl text-gray-300">{lastAnalysis}</div>
+                            </div>
+                        ) : (
+                            <div className="bg-slate-900 p-4 rounded-lg text-gray-400 font-['VT323'] text-xl">
+                                No data yet. Start capturing to see analysis results!
+                            </div>
+                        )}
+
+                        {/* Ranked Mode CTA */}
+                        <div className="mt-8 p-6 bg-slate-700 rounded-lg text-center">
+                            <h3 className="text-2xl font-bold mb-3 text-blue-300 font-['VT323']">
+                                Ready to compete?
+                            </h3>
+                            <p className="text-lg text-gray-300 mb-4 font-['VT323']">
+                                Challenge other developers in ranked mode and see who has the higher
+                                developer aura!
+                            </p>
+                            <Link
+                                href="/ranked"
+                                className="inline-block px-8 py-3 bg-blue-700 text-white rounded-lg hover:bg-blue-600 transition-colors font-['VT323'] text-xl"
+                            >
+                                Enter Ranked Mode
+                            </Link>
+                        </div>
+                    </div>
                 </div>
+
+                {/* Canvas elements used for capture (hidden) */}
+                <canvas ref={webcamCanvasRef} style={{ display: "none" }}></canvas>
+                <canvas ref={screenCanvasRef} style={{ display: "none" }}></canvas>
             </div>
 
-            {/* Popup for image sent notification */}
+            {/* Capture Notification Popup */}
             {showPopup && (
-                <div className="fixed bottom-8 right-8 bg-white text-purple-600 px-6 py-4 rounded-lg shadow-lg font-['VT323'] text-xl animate-bounce">
-                    Images sent successfully! 🚀
+                <div className="fixed bottom-6 right-6 bg-slate-800 text-gray-200 rounded-lg shadow-lg p-4 border border-blue-500 max-w-md font-['VT323']">
+                    <div className="flex items-start">
+                        <div className="flex-shrink-0 text-blue-400 text-3xl">
+                            <span role="img" aria-label="camera">
+                                📸
+                            </span>
+                        </div>
+                        <div className="ml-4">
+                            <h3 className="text-lg font-bold text-blue-300">Snapshot Sent</h3>
+                            <p className="text-gray-300">
+                                Your webcam and screen snapshots have been sent for aura analysis.
+                            </p>
+                        </div>
+                    </div>
                 </div>
             )}
-        </main>
+        </div>
     );
 }

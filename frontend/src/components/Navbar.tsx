@@ -18,13 +18,13 @@ const Navbar = () => {
   const isActive = (path: string) => pathname === path;
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-purple-700 to-indigo-600 shadow-lg font-['VT323']">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-slate-800 to-gray-900 shadow-lg font-['VT323']">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center">
             <div className="flex-shrink-0">
               <Link href="/" className="flex items-center">
-                <span className="text-white text-2xl font-['Press_Start_2P'] tracking-tight">DMPN</span>
+                <span className="text-blue-400 text-2xl font-['Press_Start_2P'] tracking-tight">DMPN</span>
               </Link>
             </div>
           </div>
@@ -38,8 +38,8 @@ const Navbar = () => {
                   href={link.href}
                   className={`text-xl px-3 py-2 rounded-md ${
                     isActive(link.href)
-                      ? 'bg-indigo-800 text-white'
-                      : 'text-gray-100 hover:bg-purple-600 hover:text-white'
+                      ? 'bg-slate-700 text-blue-300'
+                      : 'text-gray-300 hover:bg-slate-700 hover:text-blue-200'
                   } transition-all duration-200`}
                 >
                   {link.label}
@@ -52,7 +52,7 @@ const Navbar = () => {
           <div className="md:hidden flex items-center">
             <button
               type="button"
-              className="inline-flex items-center justify-center p-2 rounded-md text-white hover:text-white hover:bg-purple-600 focus:outline-none"
+              className="inline-flex items-center justify-center p-2 rounded-md text-gray-300 hover:text-blue-200 hover:bg-slate-700 focus:outline-none"
               aria-controls="mobile-menu"
               aria-expanded="false"
               onClick={() => setIsMenuOpen(!isMenuOpen)}
@@ -94,8 +94,8 @@ const Navbar = () => {
               href={link.href}
               className={`block text-xl px-3 py-2 rounded-md ${
                 isActive(link.href)
-                  ? 'bg-indigo-800 text-white'
-                  : 'text-gray-100 hover:bg-purple-600 hover:text-white'
+                  ? 'bg-slate-700 text-blue-300'
+                  : 'text-gray-300 hover:bg-slate-700 hover:text-blue-200'
               } transition-all duration-200`}
               onClick={() => setIsMenuOpen(false)}
             >
