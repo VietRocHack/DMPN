@@ -219,60 +219,63 @@ export default function RankedAura() {
 
     // Start regular aura updates with real backend integration
     const startAuraUpdates = () => {
-        // Log initial call with timestamp
-        console.log("🚀 startAuraUpdates called at:", new Date().toISOString());
-        
-        if (!webcamPermission || !screenPermission) {
-            console.log("❌ Permissions not granted yet, can't start aura updates");
-            return;
-        }
+        if (webcamPermission && screenPermission) {
+            // Check if videos are ready
+            const webcamReady = videoRef.current?.videoWidth && videoRef.current?.videoHeight;
+            const screenReady = screenRef.current?.videoWidth && screenRef.current?.videoHeight;
 
-        // Check if videos are ready
-        const webcamReady = videoRef.current?.videoWidth && videoRef.current?.videoHeight;
-        const screenReady = screenRef.current?.videoWidth && screenRef.current?.videoHeight;
+            if (!webcamReady || !screenReady) {
+                console.log("Videos not ready yet. Waiting 1 second before retrying...");
+                console.log(
+                    "Webcam dimensions:",
+                    videoRef.current?.videoWidth,
+                    videoRef.current?.videoHeight
+                );
+                console.log(
+                    "Screen dimensions:",
+                    screenRef.current?.videoWidth,
+                    screenRef.current?.videoHeight
+                );
+                setTimeout(startAuraUpdates, 1000);
+                return;
+            }
 
-        if (!webcamReady || !screenReady) {
-            console.log("❌ Videos not ready yet. Waiting 1 second before retrying...");
+            // Stop any existing interval first
+            if (auraUpdateInterval) {
+                console.log("Clearing existing interval before starting new one");
+                clearInterval(auraUpdateInterval);
+                setAuraUpdateInterval(null);
+            }
+
             console.log(
-                "Webcam dimensions:",
+                "Starting capture with dimensions - Webcam:",
                 videoRef.current?.videoWidth,
-                videoRef.current?.videoHeight
-            );
-            console.log(
-                "Screen dimensions:",
+                videoRef.current?.videoHeight,
+                "Screen:",
                 screenRef.current?.videoWidth,
-                screenRef.current?.videoHeight
+                screenRef.current?.videoHeight,
+                "Interval:",
+                captureInterval,
+                "seconds"
             );
-            setTimeout(startAuraUpdates, 1000);
-            return;
-        }
 
-        // Clean up any existing interval
-        if (auraUpdateInterval) {
-            console.log("🧹 Clearing existing aura update interval");
-            clearInterval(auraUpdateInterval);
-            setAuraUpdateInterval(null);
-        }
-
-        console.log(`⏱️ Starting aura updates every ${captureInterval} seconds`);
-        
-        // Set interval for updates
-        intervalValueRef.current = captureInterval;
-        const updateInterval = setInterval(() => {
-            // Unique log to identify each interval trigger
-            const timestamp = new Date().toISOString();
-            const intervalId = Math.random().toString(36).substring(2, 8);
-            console.log(`⏰ Interval #${intervalId} triggered at ${timestamp}`);
+            // Capture once immediately
             captureAndSendAuraData();
-        }, captureInterval * 1000);
-        
-        setAuraUpdateInterval(updateInterval);
-        console.log("✅ Aura update interval set successfully");
+
+            // Set up interval for future captures
+            const captureIntervalMs = captureInterval * 1000;
+            console.log(`Setting up interval to capture every ${captureIntervalMs}ms`);
+            const updateInterval = setInterval(captureAndSendAuraData, captureIntervalMs);
+            setAuraUpdateInterval(updateInterval);
+            
+            // Store the current interval value
+            intervalValueRef.current = captureInterval;
+        }
     };
     
     // Capture and send data to the backend for aura analysis
     const captureAndSendAuraData = async () => {
-        console.log("📸 captureAndSendAuraData called at:", new Date().toISOString());
+        console.log("Capturing and sending aura data");
         
         if (
             !videoRef.current ||
@@ -677,11 +680,9 @@ export default function RankedAura() {
                     // Reset image count before starting new session
                     setImagesSent(0);
                     
-                    // Start periodic aura score updates - use a small delay to avoid any race conditions
-                    console.log("🔄 Starting aura updates after a short delay");
-                    setTimeout(() => {
-                        startAuraUpdates();
-                    }, 500);
+                    // Start periodic aura score updates
+                    console.log("Starting aura updates");
+                    startAuraUpdates();
                     
                     return 0;
                 }
@@ -736,28 +737,12 @@ export default function RankedAura() {
     useEffect(() => {
         // Only restart the interval if we're already in a match
         if (matchStarted && auraUpdateInterval) {
-            console.log(`⚙️ Capture interval changed to ${captureInterval}s, restarting timer`);
-            
-            // Clear old interval
-            clearInterval(auraUpdateInterval);
-            setAuraUpdateInterval(null);
-            
-            // Short delay before creating new interval to prevent overlaps
-            setTimeout(() => {
-                console.log("🔄 Creating new interval after interval change");
-                // Create new interval
-                const newInterval = setInterval(() => {
-                    const timestamp = new Date().toISOString();
-                    console.log(`⏰ New interval triggered at ${timestamp}`);
-                    captureAndSendAuraData();
-                }, captureInterval * 1000);
-                
-                setAuraUpdateInterval(newInterval);
-            }, 100);
+            console.log(`Capture interval changed to ${captureInterval}s, restarting timer`);
+            console.log("fuck");
+            // Just call startAuraUpdates which will handle cleaning up the old interval
+            // and starting a new one with the current captureInterval value
+            startAuraUpdates();
         }
-        
-        // Update ref value
-        intervalValueRef.current = captureInterval;
     }, [captureInterval, matchStarted]);
 
     return (
@@ -839,7 +824,7 @@ export default function RankedAura() {
                                 {userAuraScore > enemyAuraScore 
                                     ? 'Your coding aura outshined your opponent!' 
                                     : userAuraScore < enemyAuraScore 
-                                    ? 'Your opponent\'s coding skills were too strong this time.' 
+                                    ? "Your opponent's coding skills were too strong this time." 
                                     : 'A perfect match of coding skills!'}
                             </p>
                         </div>
