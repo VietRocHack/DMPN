@@ -2,6 +2,18 @@
 
 import { useState, useEffect, useRef } from "react";
 import { io } from "socket.io-client";
+import Image from "next/image";
+
+// Import emotes
+import happyEmote from "@/images/happy.png"; 
+import lazyEmote from "@/images/lazy.png";
+import indifferentEmote from "@/images/indifferent.png";
+import competitiveEmote from "@/images/competitive.png";
+import tiredEmote from "@/images/tired.png";
+import sleepingEmote from "@/images/sleeping.png";
+import shockedEmote from "@/images/shocked.png";
+import laughEmote from "@/images/laugh.png";
+import lockedInEmote from "@/images/locked_in.png";
 
 // Constants for the application
 const API_CONFIG = {
@@ -34,6 +46,29 @@ interface AuraMessage {
     tips?: string[]; // Tips from backend
     timestamp?: number; // Message timestamp
 }
+
+// Helper function to get appropriate emote based on aura level
+const getAuraLevelEmote = (points: number) => {
+    if (points < 0) return tiredEmote; // Debugging Disaster
+    if (points < 20) return sleepingEmote; // Low Code Cadet
+    if (points < 50) return indifferentEmote; // Code Cadet
+    if (points < 100) return competitiveEmote; // Function Fanatic
+    if (points < 150) return happyEmote; // Algorithm Ace
+    if (points < 200) return laughEmote; // High Algorithm Ace
+    return lockedInEmote; // Programming Prodigy
+};
+
+// Get emote for snapshot based on point change
+const getSnapshotEmote = (pointChange: number | undefined) => {
+    if (!pointChange) return indifferentEmote;
+    if (pointChange > 10) return laughEmote;
+    if (pointChange > 5) return happyEmote;
+    if (pointChange > 0) return competitiveEmote;
+    if (pointChange < -10) return sleepingEmote;
+    if (pointChange < -5) return tiredEmote;
+    if (pointChange < 0) return lazyEmote; // Small negative change
+    return shockedEmote; // Zero change
+};
 
 export default function AdminDashboard() {
     // State for total aura points
@@ -335,7 +370,7 @@ export default function AdminDashboard() {
             <div className="max-w-7xl mx-auto">
                 {/* Page Header */}
                 <div className="mb-8">
-                    <h1 className="text-4xl font-bold text-blue-400 mb-2 font-['Press_Start_2P']">Admin Dashboard</h1>
+                    <h1 className="text-4xl font-bold text-blue-400 mb-2 font-['Press_Start_2P']">Aura Observatory</h1>
                     <p className="text-lg text-gray-300 font-['VT323']">
                         Monitor developer aura activity in real-time
                     </p>
@@ -399,8 +434,17 @@ export default function AdminDashboard() {
                                     <div key={index} className="bg-slate-900 rounded-lg overflow-hidden shadow-md">
                                         {/* Snapshot Header */}
                                         <div className="p-3 flex items-center justify-between">
-                                            <div className="text-xl font-['VT323']">
-                                        <span
+                                            <div className="flex items-center text-xl font-['VT323']">
+                                                {/* Add snapshot emote */}
+                                                <div className="flex-shrink-0 mr-3 relative w-8 h-8">
+                                                    <Image
+                                                        src={getSnapshotEmote(snapshot.pointChange)}
+                                                        alt="Reaction"
+                                                        layout="fill"
+                                                        objectFit="contain"
+                                                    />
+                                                </div>
+                                                <span
                                                     className={`text-xl ${
                                                         (snapshot.pointChange || 0) > 0 
                                                     ? "text-green-400"
@@ -408,16 +452,16 @@ export default function AdminDashboard() {
                                                                 ? "text-red-400" 
                                                                 : "text-gray-400"
                                             }`}
-                                        >
+                                                >
                                                     {(snapshot.pointChange || 0) > 0 
                                                 ? `+${snapshot.pointChange}`
                                                         : snapshot.pointChange}
-                                        </span>
+                                                </span>
                                                 <span className="text-gray-400 text-sm ml-2">
                                                     {snapshot.timestamp ? formatTime(snapshot.timestamp) : "Just now"}
-                                        </span>
+                                                </span>
                                             </div>
-                                    </div>
+                                        </div>
 
                                         {/* Image(s) */}
                                         <div className="flex flex-col sm:flex-row">
@@ -485,11 +529,21 @@ export default function AdminDashboard() {
                             
                             <h2 className="text-2xl font-bold mb-2 text-blue-300 font-['VT323'] relative z-10">Developer Aura</h2>
                             
+                            {/* Add emote above the points */}
+                            <div className="relative w-32 h-32 mb-4">
+                                <Image
+                                    src={getAuraLevelEmote(totalPoints)}
+                                    alt="Aura Level"
+                                    layout="fill"
+                                    objectFit="contain"
+                                />
+                            </div>
+                            
                             {/* Points display without pulsating ring */}
-                            <div className="relative my-4">
+                            <div className="relative mb-2">
                                 {/* Remove pulsating ring */}
                                 <div 
-                                    className="text-8xl font-bold mb-2 font-['Press_Start_2P'] relative z-10"
+                                    className="text-8xl font-bold font-['Press_Start_2P'] relative z-10"
                                     style={{ color: getAuraColor() }}
                                 >
                                     {totalPoints}
@@ -497,17 +551,17 @@ export default function AdminDashboard() {
                             </div>
                             
                             <div 
-                                className="text-3xl text-center font-['VT323'] relative z-10"
+                                className="text-3xl text-center font-['VT323'] relative z-10 mb-4"
                                 style={{ color: getAuraColor() }}
                             >
                                 {getAuraLevel()}
                             </div>
                             
-                            <div className="w-full bg-slate-900 h-4 rounded-full mt-6 overflow-hidden relative z-10">
+                            <div className="w-full bg-slate-900 h-4 rounded-full overflow-hidden relative z-10">
                                 <div 
                                     className="h-full rounded-full transition-all duration-500 ease-out"
                                     style={{ 
-                                        width: `${Math.min(totalPoints, 100)}%`,
+                                        width: `${Math.min(Math.max(totalPoints, 0), 100)}%`,
                                         backgroundColor: getAuraColor() 
                                     }}
                                 ></div>
@@ -531,16 +585,16 @@ export default function AdminDashboard() {
                                         Current aura level
                                     </span>
                                     <span className="text-xl font-bold font-['VT323']" style={{ color: getAuraColor() }}>
-                            {getAuraLevel()}
+                                        {getAuraLevel()}
                                     </span>
-                        </div>
+                                </div>
                                 <div className="flex justify-between items-center">
                                     <span className="text-gray-300 font-['VT323'] text-lg">
                                         WebSocket status
                                     </span>
                                     <span className={`text-xl font-bold font-['VT323'] ${connected ? "text-green-400" : "text-red-400"}`}>
                                         {connected ? "Connected" : "Disconnected"}
-                            </span>
+                                    </span>
                                 </div>
                             </div>
                         </div>
@@ -552,14 +606,23 @@ export default function AdminDashboard() {
                         <div className="space-y-4 max-h-[75vh] overflow-y-auto pr-2">
                             {tips.map((tip, index) => (
                                 <div 
-                                        key={index}
+                                    key={index}
                                     className={`p-4 rounded-lg ${
                                         index % 2 === 0 ? "bg-slate-700" : "bg-slate-900"
                                     }`}
                                 >
-                                    <div className="flex">
-                                        <div className="flex-shrink-0 mr-3 text-blue-400">
-                                            <span role="img" aria-label="tip">💡</span>
+                                    <div className="flex items-start">
+                                        <div className="flex-shrink-0 mr-3 relative w-6 h-6">
+                                            <Image
+                                                src={index % 5 === 0 ? laughEmote : 
+                                                     index % 4 === 0 ? competitiveEmote : 
+                                                     index % 3 === 0 ? happyEmote : 
+                                                     index % 2 === 0 ? indifferentEmote : 
+                                                     lockedInEmote}
+                                                alt="Tip"
+                                                layout="fill"
+                                                objectFit="contain"
+                                            />
                                         </div>
                                         <p className="text-gray-300 font-['VT323'] text-lg">{tip}</p>
                                     </div>

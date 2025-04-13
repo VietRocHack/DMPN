@@ -10,9 +10,9 @@ const Navbar = () => {
 
   const navLinks = [
     { href: '/', label: 'Home' },
-    { href: '/dashboard', label: 'User Dashboard' },
-    { href: '/admin', label: 'Admin Dashboard' },
-    { href: '/ranked', label: 'Ranked Aura' },
+    { href: '/dashboard', label: 'Calibration Studio' },
+    { href: '/admin', label: 'Observatory' },
+    { href: '/ranked', label: 'Ranked Mode' },
   ];
 
   const isActive = (path: string) => pathname === path;

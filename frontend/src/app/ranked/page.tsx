@@ -10,6 +10,10 @@ import lazyEmote from "@/images/lazy.png";
 import indifferentEmote from "@/images/indifferent.png";
 import competitiveEmote from "@/images/competitive.png";
 import tiredEmote from "@/images/tired.png";
+import sleepingEmote from "@/images/sleeping.png";
+import shockedEmote from "@/images/shocked.png";
+import laughEmote from "@/images/laugh.png";
+import lockedInEmote from "@/images/locked_in.png";
 
 // Fake data for recent matches
 const RECENT_MATCHES = [
@@ -1344,17 +1348,29 @@ export default function RankedAura() {
                                     Searching for Opponent
                                 </h2>
                                 
-                                {/* Pulsing radar animation */}
+                                {/* Pulsing radar animation with emote */}
                                 <div className="flex justify-center mb-8 relative">
                                     <div className="w-32 h-32 rounded-full bg-slate-700 flex items-center justify-center">
                                         <div className="absolute w-32 h-32 rounded-full border-4 border-blue-500/50 animate-ping"></div>
                                         <div className="absolute w-24 h-24 rounded-full border-4 border-blue-400/40 animate-ping animation-delay-300"></div>
                                         <div className="absolute w-16 h-16 rounded-full border-4 border-blue-300/30 animate-ping animation-delay-600"></div>
                                         
-                                        {/* Developer icon */}
-                                        <div className="text-blue-300 text-4xl z-10">👨‍💻</div>
-                            </div>
-                        </div>
+                                        {/* Replace emoji with an emote that changes based on search time */}
+                                        <div className="relative w-16 h-16 z-10">
+                                            <Image
+                                                src={
+                                                    searchTime > 15 ? tiredEmote :
+                                                    searchTime > 10 ? indifferentEmote :
+                                                    searchTime > 5 ? happyEmote :
+                                                    lockedInEmote
+                                                }
+                                                alt="Searching"
+                                                layout="fill"
+                                                objectFit="contain"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
                         
                                 {/* Searching animation dots */}
                                 <p className="text-center text-gray-300 mb-4 font-['VT323'] text-2xl flex items-center justify-center">
@@ -1370,7 +1386,7 @@ export default function RankedAura() {
                                     <div className="text-2xl text-blue-300 font-['Press_Start_2P'] tracking-wider">
                                         {formatSearchTime(searchTime)}
                                     </div>
-                            </div>
+                                </div>
                             
                                 {/* Status messages */}
                                 <div className="space-y-2 mb-6">
@@ -1381,17 +1397,30 @@ export default function RankedAura() {
                                     <div className="flex items-center text-gray-300 font-['VT323']">
                                         <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
                                         <span>Analyzing aura compatibility...</span>
-                                        </div>
+                                    </div>
                                     <div className="flex items-center text-gray-300 font-['VT323']">
                                         <div className="w-2 h-2 bg-blue-500 animate-pulse rounded-full mr-2"></div>
                                         <span>Establishing connection...</span>
                                     </div>
                                 </div>
                                 
-                                {/* Online users indicator */}
-                                <div className="text-center text-gray-400 font-['VT323'] mb-6">
-                                    <span className="text-green-400">{onlineUsers}</span> developers currently online
+                                {/* Online users indicator with emote */}
+                                <div className="flex items-center justify-center gap-2 text-gray-400 font-['VT323'] mb-6">
+                                    <div className="relative w-6 h-6">
+                                        <Image
+                                            src={
+                                                onlineUsers > 50 ? laughEmote :
+                                                onlineUsers > 30 ? happyEmote :
+                                                onlineUsers > 10 ? indifferentEmote :
+                                                tiredEmote
+                                            }
+                                            alt="Online"
+                                            layout="fill"
+                                            objectFit="contain"
+                                        />
                                     </div>
+                                    <span className="text-green-400">{onlineUsers}</span> developers currently online
+                                </div>
                                 
                                 <button
                                     onClick={() => {
@@ -1404,9 +1433,9 @@ export default function RankedAura() {
                                     <span className="relative z-10">Cancel Search</span>
                                     <div className="absolute inset-0 bg-gradient-to-r from-red-800 to-red-600 transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left"></div>
                                 </button>
-                                        </div>
-                                    </div>
-                                </div>
+                            </div>
+                        </div>
+                    </div>
                 )}
 
                 {/* Countdown Modal */}
@@ -1420,9 +1449,9 @@ export default function RankedAura() {
                                 <div className="relative mb-4 flex flex-col items-center">
                                     <div className="relative w-24 h-24 mb-2">
                                         <Image
-                                            src={countdownValue === 3 ? tiredEmote : 
-                                                 countdownValue === 2 ? indifferentEmote : 
-                                                 competitiveEmote}
+                                            src={countdownValue === 3 ? sleepingEmote : 
+                                                 countdownValue === 2 ? shockedEmote : 
+                                                 lockedInEmote}
                                             alt="Countdown"
                                             layout="fill"
                                             objectFit="contain"
@@ -1442,9 +1471,9 @@ export default function RankedAura() {
                                 </p>
                             </div>
                         </div>
-                                    </div>
-                                )}
-                                
+                    </div>
+                )}
+                
                 {/* Results Modal */}
                 {showResultModal && (
                     <div className="fixed inset-0 flex items-center justify-center bg-black/70 z-50">
@@ -1458,21 +1487,29 @@ export default function RankedAura() {
                                     <div className="text-xl text-gray-300 font-['VT323']">Your Score</div>
                                     <div className="relative w-16 h-16 mx-auto my-2">
                                         <Image
-                                            src={getUserAuraEmote(userAuraScore, userScoreHistory)}
+                                            src={
+                                                userAuraScore > enemyAuraScore ? laughEmote :
+                                                userAuraScore === enemyAuraScore ? indifferentEmote :
+                                                tiredEmote
+                                            }
                                             alt="Your Aura"
                                             layout="fill"
                                             objectFit="contain"
                                         />
-                                                        </div>
+                                    </div>
                                     <div className="text-4xl font-bold font-['VT323']" style={{ color: getUserAuraColor() }}>
                                         {userAuraScore}
-                                                    </div>
-                                        </div>
+                                    </div>
+                                </div>
                                 <div className="text-center">
                                     <div className="text-xl text-gray-300 font-['VT323']">{enemyName}&apos;s Score</div>
                                     <div className="relative w-16 h-16 mx-auto my-2">
                                         <Image
-                                            src={getEnemyAuraEmote(enemyAuraScore, enemyScoreHistory)}
+                                            src={
+                                                enemyAuraScore > userAuraScore ? laughEmote :
+                                                enemyAuraScore === userAuraScore ? indifferentEmote :
+                                                tiredEmote
+                                            }
                                             alt="Enemy Aura"
                                             layout="fill"
                                             objectFit="contain"
@@ -1492,8 +1529,8 @@ export default function RankedAura() {
                                         <span className="text-red-400">Defeat!</span>
                                     ) : (
                                         <span className="text-yellow-400">Draw!</span>
-                                )}
-                            </div>
+                                    )}
+                                </div>
                                 <p className="text-gray-300 font-['VT323']">
                                     {userAuraScore > enemyAuraScore
                                         ? "Your developer aura outshined your opponent!"
@@ -1501,7 +1538,7 @@ export default function RankedAura() {
                                         ? "Your opponent's aura was stronger this time."
                                         : "Both of you have equally powerful auras!"}
                                 </p>
-                        </div>
+                            </div>
 
                             <button
                                 onClick={resetMatch}
@@ -1509,9 +1546,9 @@ export default function RankedAura() {
                             >
                                 Return to Lobby
                             </button>
+                        </div>
                     </div>
-                </div>
-            )}
+                )}
 
                 {/* Stop Match Confirmation Modal */}
                 {showStopMatchModal && (
@@ -1538,8 +1575,8 @@ export default function RankedAura() {
                                 </button>
                             </div>
                         </div>
-                </div>
-            )}
+                    </div>
+                )}
 
                 {/* Hidden canvas elements */}
                 <canvas ref={webcamCanvasRef} style={{ display: "none" }}></canvas>

@@ -11,6 +11,10 @@ import lazyEmote from "@/images/lazy.png";
 import indifferentEmote from "@/images/indifferent.png";
 import competitiveEmote from "@/images/competitive.png";
 import tiredEmote from "@/images/tired.png";
+import sleepingEmote from "@/images/sleeping.png";
+import shockedEmote from "@/images/shocked.png";
+import laughEmote from "@/images/laugh.png";
+import lockedInEmote from "@/images/locked_in.png";
 
 // Constants for the application
 const API_CONFIG = {
@@ -24,12 +28,62 @@ const API_CONFIG = {
 
 // Helper function to get the appropriate emote based on score and changes
 const getAuraEmote = (score: number, lastChange: number | null) => {
+    // Use locked_in for very high scores with positive change
+    if (score > 150 && lastChange && lastChange > 0) return lockedInEmote;
+    
+    // Use laugh for high scores with big jumps
+    if (score > 100 && lastChange && lastChange > 8) return laughEmote;
+    
+    // Use shocked for big point changes (positive or negative)
+    if (lastChange && Math.abs(lastChange) > 12) return shockedEmote;
+    
+    // Use sleeping for very low scores
+    if (score < 20) return sleepingEmote;
+    
+    // Original logic
     if (score < 30) return tiredEmote;
     if (score > 80) return happyEmote;
     if (lastChange && lastChange > 5) return competitiveEmote;
     if (lastChange && lastChange < 0) return indifferentEmote;
     return lazyEmote;
 };
+
+// Helper to get emote for specific point changes in the activity feed
+const getActivityEmote = (change: number) => {
+    if (change > 12) return laughEmote; // Big positive change - laugh
+    if (change > 8) return lockedInEmote; // Good positive change - locked in
+    if (change > 5) return competitiveEmote; // Medium positive change - competitive
+    if (change > 0) return happyEmote; // Small positive change - happy
+    if (change < -12) return shockedEmote; // Big negative change - shocked
+    if (change < -8) return sleepingEmote; // Bigger negative change - sleeping
+    if (change < -5) return tiredEmote; // Medium negative change - tired
+    return indifferentEmote; // Small negative change - indifferent
+};
+
+// Meme-style reasons for aura changes
+const positiveReasons = [
+    "Epic code energy detected!",
+    "Keyboard warrior mode activated!",
+    "Clean code vibes intensify!",
+    "Syntax mastery observed!",
+    "Bug squashing champion!",
+    "Code quality meter exploding!",
+    "Pixel-perfect focus detected!",
+    "Git commits on fire!",
+    "Debugging like a wizard!"
+];
+
+const negativeReasons = [
+    "Coffee levels critically low!",
+    "Distracted by cat videos!",
+    "Stackoverflow connection lost!",
+    "Needs more RGB lighting!",
+    "Syntax error in brain.js!",
+    "Keyboard rage detected!",
+    "Yawning at code reviews!",
+    "Stack overflow in real life!",
+    "Runtime error in attention span!"
+];
 
 export default function Dashboard() {
     const [webcamPermission, setWebcamPermission] = useState<boolean | null>(null);
@@ -419,23 +473,7 @@ export default function Dashboard() {
             const pointChange = Math.floor(Math.random() * 21) - 10; // -10 to +10
             const newPoints = totalPoints + pointChange;
 
-            // Generate a meme-style reason
-            const positiveReasons = [
-                "Epic code energy detected!",
-                "Keyboard warrior mode activated!",
-                "Clean code vibes intensify!",
-                "Syntax mastery observed!",
-                "Bug squashing champion!"
-            ];
-            
-            const negativeReasons = [
-                "Coffee levels critically low!",
-                "Distracted by cat videos!",
-                "Stackoverflow connection lost!",
-                "Needs more RGB lighting!",
-                "Syntax error in brain.js!"
-            ];
-            
+            // Use previously defined reason arrays
             const reason = pointChange >= 0 
                 ? positiveReasons[Math.floor(Math.random() * positiveReasons.length)]
                 : negativeReasons[Math.floor(Math.random() * negativeReasons.length)];
@@ -734,7 +772,7 @@ export default function Dashboard() {
                         />
                         <div className="absolute inset-0 bg-gradient-to-r from-slate-900/90 via-slate-900/70 to-transparent"></div>
                         <div className="absolute inset-0 flex flex-col justify-center px-8">
-                            <h1 className="text-4xl font-bold text-blue-400 mb-2 font-['Press_Start_2P'] drop-shadow-lg">User Dashboard</h1>
+                            <h1 className="text-4xl font-bold text-blue-400 mb-2 font-['Press_Start_2P'] drop-shadow-lg">Aura Calibration Studio</h1>
                             <p className="text-lg text-gray-300 font-['VT323'] max-w-xl">
                                 Share your webcam and screen to analyze your developer aura. Our AI will judge your programming skills and provide feedback.
                             </p>
@@ -1033,16 +1071,11 @@ export default function Dashboard() {
                                                 {item.change > 0 ? `+${item.change}` : item.change}
                                             </div>
                                             
-                                            {/* Emote image */}
+                                            {/* Emote image - use the new helper function */}
                                             <div className="flex-shrink-0">
                                                 <div className="relative w-12 h-12">
                                                     <Image
-                                                        src={
-                                                            item.change > 5 ? competitiveEmote :
-                                                            item.change > 0 ? happyEmote :
-                                                            item.change < -5 ? tiredEmote :
-                                                            indifferentEmote
-                                                        }
+                                                        src={getActivityEmote(item.change)}
                                                         alt="Emotion"
                                                         layout="fill"
                                                         objectFit="contain"
@@ -1076,7 +1109,7 @@ export default function Dashboard() {
                             <div className="mb-4">
                                 <div className="relative w-16 h-16 mx-auto">
                                     <Image
-                                        src={competitiveEmote}
+                                        src={lockedInEmote}
                                         alt="Competitive"
                                         layout="fill"
                                         objectFit="contain"
